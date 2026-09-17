@@ -48,7 +48,7 @@ class Registry:
         self.gates = gates
 
     @classmethod
-    def load(cls, path: str | Path) -> "Registry":
+    def load(cls, path: str | Path) -> Registry:
         data = yaml.safe_load(Path(path).read_text()) or {}
         raw_gates = data.get("gates", [])
         gates = [

@@ -37,7 +37,9 @@ class Runner:
             result = impl.run(gate)
             result.duration_ms = int((time.monotonic() - start) * 1000)
             return result
-        except Exception as exc:
+        # A gate must never crash the runner. Any exception from a gate
+        # implementation is captured as an ERROR verdict for that gate.
+        except Exception as exc:  # noqa: BLE001
             return GateResult(
                 gate=gate,
                 verdict=Verdict.ERROR,

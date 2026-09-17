@@ -24,7 +24,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.1.0", "pytest-cov"]
+dev = ["pytest>=7.0", "ruff>=0.1.0", "pytest-cov", "mypy>=1.10", "types-PyYAML"]
 
 [project.scripts]
 qc-property = "qc_property.cli:main"
