@@ -18,3 +18,11 @@ data/
 
 # Python egg-info
 *.egg-info/
+
+# pytest-cov
+.coverage
+coverage.xml
+htmlcov/
+
+# detect-secrets baseline is generated per environment
+.secrets.baseline
