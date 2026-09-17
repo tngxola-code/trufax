@@ -10,3 +10,8 @@ data/output/
 .pytest_cache/
 .ruff_cache/
 *.part
+# macOS
+.DS_Store
+
+# Local pipeline output
+data/
