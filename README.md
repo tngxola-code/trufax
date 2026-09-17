@@ -6,7 +6,7 @@
 [![Docs](https://img.shields.io/badge/docs-docs.trufax.dev-green)]()
 [![Status](https://img.shields.io/badge/status-alpha-orange)]()
 
-> **Trufax** — internet slang for "true facts." It meant verified truth before anyone built a company around it. We're bringing it back as a platform that turns fragmented data into provable, trusted decisions — across any domain.
+> **Trufax** - internet slang for "true facts." It meant verified truth before anyone built a company around it. We're bringing it back as a platform that turns fragmented data into provable, trusted decisions — across any domain.
 
 ---
 
@@ -47,7 +47,7 @@ Trufax is domain-agnostic by design. Government registries, health records, lega
 Trufax is built around a simple progression:
 
 ```
-Raw data  →  Information  →  Knowledge  →  Trusted decision
+Raw data  -->  Information  -->  Knowledge  -->  Trusted decision
 ```
 
 | Stage | What happens | What you get |
@@ -170,7 +170,7 @@ Every run produces a **signed manifest**:
 
 Every fact is **traceable**:
 ```
-canonical value → raw source tag → retained source artifact → run manifest
+canonical value --> raw source tag --> retained source artifact --> run manifest
 ```
 
 Every run is **verifiable**:
