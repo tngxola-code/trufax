@@ -1,0 +1,14 @@
+# Trufax quality gate registry.
+#
+# Each gate is declared here. Gate implementations live in gates/impl/.
+# Gate branches append to this file, one gate per branch.
+#
+# Stages:
+#   commit        — runs on every push
+#   pull-request  — runs on every PR
+#   deploy        — runs before production deploy
+#
+# A gate that does not block promotion is not a gate.
+
+version: 1
+gates: []
