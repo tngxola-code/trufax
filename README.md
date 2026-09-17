@@ -6,7 +6,7 @@
 [![Docs](https://img.shields.io/badge/docs-docs.trufax.dev-green)]()
 [![Status](https://img.shields.io/badge/status-alpha-orange)]()
 
-> **Trufax** - internet slang for "true facts." It meant verified truth before anyone built a company around it. We're bringing it back as a platform that turns fragmented data into provable, trusted decisions — across any domain.
+> **Trufax** - internet slang for "true facts." It meant verified truth before anyone built a company around it. We're bringing it back as a platform that turns fragmented data into provable, trusted decisions - across any domain.
 
 ---
 
@@ -16,7 +16,7 @@ Every organization that works with public or enterprise data hits the same wall.
 
 The data you need exists. It's authoritative. It's public. And it's useless in its current form.
 
-A government registry is spread across hundreds of files — one per agency, each with its own schema. A health authority publishes patient outcomes as scanned PDFs going back to 2005. A legal gazette releases notices as HTML with no consistent structure. A financial regulator publishes filings in a different format every quarter. A procurement portal exposes tender data across a dozen disconnected sites. An environmental agency ships sensor readings as compressed archives with a different column order each month.
+A government registry is spread across hundreds of files - one per agency, each with its own schema. A health authority publishes patient outcomes as scanned PDFs going back to 2005. A legal gazette releases notices as HTML with no consistent structure. A financial regulator publishes filings in a different format every quarter. A procurement portal exposes tender data across a dozen disconnected sites. An environmental agency ships sensor readings as compressed archives with a different column order each month.
 
 You can't query it. You can't join it. You can't audit it. You can't prove where a number came from.
 
@@ -24,13 +24,13 @@ So teams do what teams always do: they write scrapers. They write parsers. They 
 
 **This is not a data problem. It's a trust problem.**
 
-And it is the same problem in every domain — government, health, legal, financial, procurement, environment, education, immigration. The surface changes. The shape does not.
+And it is the same problem in every domain - government, health, legal, financial, procurement, environment, education, immigration. The surface changes. The shape does not.
 
 ---
 
 ## What Trufax solves
 
-Trufax turns fragmented, heterogeneous, untrusted sources into **canonical, provable, composable datasets** — driven entirely by configuration.
+Trufax turns fragmented, heterogeneous, untrusted sources into **canonical, provable, composable datasets** - driven entirely by configuration.
 
 You declare a domain. You declare sources, formats, and mappings. Trufax does the rest: fetch, parse, transform, validate, publish, and prove.
 
@@ -38,7 +38,7 @@ You declare a domain. You declare sources, formats, and mappings. Trufax does th
 
 **You do not build a new pipeline for each new domain. You write a new config.**
 
-Trufax is domain-agnostic by design. Government registries, health records, legal notices, financial filings, procurement data, environmental monitoring, education statistics, immigration records — they are all the same shape. Only the configuration changes.
+Trufax is domain-agnostic by design. Government registries, health records, legal notices, financial filings, procurement data, environmental monitoring, education statistics, immigration records - they are all the same shape. Only the configuration changes.
 
 ---
 
@@ -72,7 +72,7 @@ Most tools stop at **raw data** or **information**. Trufax goes all the way to *
 | **Bi-temporal history** | Ask what was true then, not just what is true now |
 | **Workspace** | Teams organize data, tasks, reports, and documents in one place |
 | **API-first** | Every capability reachable programmatically, versioned, tenant-scoped |
-| **Deploy anywhere** | SaaS, on-prem, or air-gapped — your choice |
+| **Deploy anywhere** | SaaS, on-prem, or air-gapped - your choice |
 
 ---
 
@@ -80,7 +80,7 @@ Most tools stop at **raw data** or **information**. Trufax goes all the way to *
 
 Trufax is **configuration-driven**. You describe your domain in a declarative file. Trufax reads that file and builds the pipeline.
 
-Here is what a domain looks like — a public registry spread across multiple agencies and formats:
+Here is what a domain looks like - a public registry spread across multiple agencies and formats:
 
 ```yaml
 domain: national-public-registry
@@ -140,7 +140,7 @@ contracts:
 
 That's it. No Python. No ETL code. No per-agency if-statements.
 
-**The same pattern works for any domain.** A health registry, a legal gazette, a financial filing system, a procurement portal — the configuration changes, the platform does not.
+**The same pattern works for any domain.** A health registry, a legal gazette, a financial filing system, a procurement portal - the configuration changes, the platform does not.
 
 Register the domain. Trigger a run. Query the result. Prove it.
 
@@ -153,7 +153,7 @@ trufax export --domain public-registry --format xlsx --output records.xlsx
 trufax verify --run-id <run_id>
 ```
 
-**Onboarding a second domain — health, legal, financial, procurement — is the same process.** Write a config. Register it. Run it.
+**Onboarding a second domain - health, legal, financial, procurement - is the same process.** Write a config. Register it. Run it.
 
 ---
 
@@ -230,13 +230,13 @@ Trufax is not competing with Bright Data, LlamaParse, Fivetran, or DataTrails. I
 
 | Layer | Who solves it | What Trufax does |
 |---|---|---|
-| Fetching | Bright Data, Zyte, Apify | Pluggable — use theirs |
-| Parsing | LlamaParse, Textract, ABBYY | Pluggable — use theirs |
+| Fetching | Bright Data, Zyte, Apify | Pluggable - use theirs |
+| Parsing | LlamaParse, Textract, ABBYY | Pluggable - use theirs |
 | Moving | Fivetran, Airbyte | Not our problem |
-| Attesting | DataTrails, Woleet | We go further — semantic provenance |
+| Attesting | DataTrails, Woleet | We go further - semantic provenance |
 | **Deriving facts with proof** | **Nobody** | **This is what we do** |
 
-Every competitor stops at bytes. Trufax derives **facts** — with a citation, a derivation chain, a proof, and a bi-temporal record. You can ask *why* a fact is true, *when* it was true, and *what would change if the source changed*. No one else can answer that.
+Every competitor stops at bytes. Trufax derives **facts** - with a citation, a derivation chain, a proof, and a bi-temporal record. You can ask *why* a fact is true, *when* it was true, and *what would change if the source changed*. No one else can answer that.
 
 ---
 
@@ -270,7 +270,7 @@ You now have a clean, canonical, verifiable spreadsheet. Every row traces to its
 
 **Data platform teams** who are tired of writing the same extraction code for every new source.
 
-**Regulated enterprises** who need to prove where a number came from — to auditors, regulators, or courts.
+**Regulated enterprises** who need to prove where a number came from - to auditors, regulators, or courts.
 
 **Government agencies** who need to publish open data as canonical, queryable datasets without building a pipeline per department.
 
@@ -282,9 +282,9 @@ You now have a clean, canonical, verifiable spreadsheet. Every row traces to its
 
 ## The name
 
-**Trufax** is internet slang for "true facts" — a piece of factual information; truth. It was born in forums and chat rooms in the early 2000s, a shorthand for "this is verified, this is real, this is the truth."
+**Trufax** is internet slang for "true facts" - a piece of factual information; truth. It was born in forums and chat rooms in the early 2000s, a shorthand for "this is verified, this is real, this is the truth."
 
-The internet forgot the word. We're bringing it back — as a platform that turns fragmented data into verified, provable facts, across every domain.
+The internet forgot the word. We're bringing it back - as a platform that turns fragmented data into verified, provable facts, across every domain.
 
 ---
 
@@ -305,4 +305,4 @@ Apache License 2.0. See [LICENSE](./LICENSE).
 ---
 
 > **Trufax is a platform, not a pipeline.**
-> **From raw data to trusted decisions — in any domain.**
+> **From raw data to trusted decisions - in any domain.**
