@@ -4,9 +4,9 @@
 # Gate branches append to this file, one gate per branch.
 #
 # Stages:
-#   commit        — runs on every push
-#   pull-request  — runs on every PR
-#   deploy        — runs before production deploy
+#   commit        : runs on every push
+#   pull-request  : runs on every PR
+#   deploy        : runs before production deploy
 #
 # A gate that does not block promotion is not a gate.
 
@@ -19,3 +19,11 @@ gates:
     impl: gates.impl.lint:LintGate
     timeout_seconds: 120
     description: "ruff check, ruff format --check, mypy on gates/"
+
+  - id: QG-2
+    name: unit-tests
+    stage: commit
+    blocking: true
+    impl: gates.impl.unit:UnitGate
+    timeout_seconds: 300
+    description: "pytest with 80% coverage on gates/"
