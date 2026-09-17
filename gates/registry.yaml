@@ -11,4 +11,11 @@
 # A gate that does not block promotion is not a gate.
 
 version: 1
-gates: []
+gates:
+  - id: QG-1
+    name: lint
+    stage: commit
+    blocking: true
+    impl: gates.impl.lint:LintGate
+    timeout_seconds: 120
+    description: "ruff check, ruff format --check, mypy on gates/"

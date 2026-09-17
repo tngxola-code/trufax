@@ -21,10 +21,7 @@ def render_text(results: list[GateResult]) -> str:
     for r in results:
         tag = ICON[r.verdict]
         block = "blocking" if r.gate.blocking else "non-blocking"
-        lines.append(
-            f"[{tag}] {r.gate.id} {r.gate.name:<28} "
-            f"{r.duration_ms:>6}ms  ({block})"
-        )
+        lines.append(f"[{tag}] {r.gate.id} {r.gate.name:<28} {r.duration_ms:>6}ms  ({block})")
         if r.message:
             lines.append(f"        {r.message}")
     return "\n".join(lines)
@@ -52,7 +49,5 @@ def render_json(results: list[GateResult]) -> str:
 def emit(results: list[GateResult], fmt: str = "text") -> int:
     out = render_text(results) if fmt == "text" else render_json(results)
     print(out)
-    blocking_failures = [
-        r for r in results if r.gate.blocking and r.verdict != Verdict.PASS
-    ]
+    blocking_failures = [r for r in results if r.gate.blocking and r.verdict != Verdict.PASS]
     return 1 if blocking_failures else 0
