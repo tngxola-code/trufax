@@ -90,8 +90,7 @@ class UnitGate:
             verdict=Verdict.PASS,
             duration_ms=0,
             message=(
-                f"all tests passed, coverage {coverage}% "
-                f"(threshold {self.COVERAGE_THRESHOLD}%)"
+                f"all tests passed, coverage {coverage}% (threshold {self.COVERAGE_THRESHOLD}%)"
                 if coverage is not None
                 else "all tests passed"
             ),

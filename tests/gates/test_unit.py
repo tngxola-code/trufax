@@ -19,9 +19,7 @@ def _gate() -> Gate:
 
 
 def _completed(returncode: int, stdout: str = "", stderr: str = ""):
-    return subprocess.CompletedProcess(
-        args=[], returncode=returncode, stdout=stdout, stderr=stderr
-    )
+    return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
 
 
 _COVERAGE_OK = """
@@ -77,9 +75,7 @@ def test_fail_when_coverage_below_threshold(monkeypatch, tmp_path: Path) -> None
     assert result.details["threshold"] == 80
 
 
-def test_fail_when_tests_fail_without_coverage_report(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_fail_when_tests_fail_without_coverage_report(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("gates.impl.unit.shutil.which", lambda _: "/usr/bin/pytest")
     monkeypatch.setattr(
         "gates.impl.unit.subprocess.run",
@@ -126,9 +122,7 @@ def test_coverage_extraction_handles_malformed_percent() -> None:
     assert UnitGate._extract_coverage("TOTAL   10   5   100%extra") is None
 
 
-def test_details_include_command_and_output_on_failure(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_details_include_command_and_output_on_failure(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("gates.impl.unit.shutil.which", lambda _: "/usr/bin/pytest")
     monkeypatch.setattr(
         "gates.impl.unit.subprocess.run",
