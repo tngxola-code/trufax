@@ -19,3 +19,19 @@ gates:
     impl: gates.impl.lint:LintGate
     timeout_seconds: 120
     description: "ruff check, ruff format --check, mypy on gates/"
+
+  - id: QG-2
+    name: unit-tests
+    stage: commit
+    blocking: true
+    impl: gates.impl.unit:UnitGate
+    timeout_seconds: 300
+    description: "pytest with 80% coverage on gates/"
+
+  - id: QG-3
+    name: security-scan
+    stage: pull-request
+    blocking: true
+    impl: gates.impl.security:SecurityGate
+    timeout_seconds: 300
+    description: "pip-audit, bandit, detect-secrets on gates/ and src/"

@@ -18,7 +18,7 @@ seen or expect.
 |---|---|---|---|
 | QG-1 | lint | commit | ruff, mypy |
 | QG-2 | unit-tests | commit | pytest |
-| QG-3 | secrets-scan | commit | gitleaks |
+| QG-3 | security-scan | pull-request | pip-audit, bandit, detect-secrets |
 | QG-4 | dependency-audit | commit | pip-audit |
 | QG-5 | integration-tests | pull-request | pytest |
 | QG-6 | data-contracts | pull-request | pandera |
@@ -78,3 +78,46 @@ These are important. They are not gates.
    external tool.
 
 A gate that does not block promotion is not a gate.
+
+## Security gate (QG-3)
+
+Runs in the **pull-request** stage. Blocks merge if any of the following
+report an issue:
+
+- `pip-audit --strict` — known CVEs in installed dependencies
+- `bandit -r -q -ll` — Python security anti-patterns (high/medium)
+- `detect-secrets scan --all-files` — hardcoded secrets
+
+Scope: `gates/` and `src/`. Tests are excluded because bandit legitimately
+flags patterns used in fixtures.
+
+If any required tool is missing, the gate errors and blocks merge. Install
+all three via `pip install -e ".[dev]"`.
+
+## Security gate (QG-3)
+
+Runs in the **pull-request** stage. Blocks merge if any of the following
+report an issue:
+
+- `pip-audit --strict` — known CVEs in installed dependencies
+- `bandit -r -q -ll` — Python security anti-patterns (high/medium)
+- `detect-secrets scan --all-files` — hardcoded secrets
+
+Scope: `gates/` and `src/`. Tests are excluded because bandit legitimately
+flags patterns used in fixtures.
+
+If any required tool is missing, the gate errors and blocks merge. Install
+all three via `pip install -e ".[dev]"`.
+
+## Unit-test gate (QG-2)
+
+Runs in the **commit** stage. Blocks PR merge if any test fails or if
+coverage on `gates/` drops below the threshold.
+
+- **Test path**: `tests/gates/`
+- **Coverage source**: `gates/`
+- **Threshold**: 80%
+- **Tool**: pytest + pytest-cov
+
+Widening the scope to `tests/` and `src/` is a follow-up branch once the
+existing test suite is coverage-ready.
