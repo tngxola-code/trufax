@@ -137,9 +137,13 @@ class SecurityGate:
             return None
         proc = subprocess.run(
             [
-                "detect-secrets", "scan",
-                "--exclude-files", r"(\.venv/|\.git/|data/|node_modules/)",
-                "gates", "src", "tests/gates",
+                "detect-secrets",
+                "scan",
+                "--exclude-files",
+                r"(\.venv/|\.git/|data/|node_modules/)",
+                "gates",
+                "src",
+                "tests/gates",
             ],
             capture_output=True,
             text=True,
