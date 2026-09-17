@@ -1,2 +1,0 @@
-[console_scripts]
-qc-property = qc_property.cli:main
