@@ -27,3 +27,19 @@ gates:
     impl: gates.impl.unit:UnitGate
     timeout_seconds: 300
     description: "pytest with 80% coverage on gates/"
+
+  - id: QG-3
+    name: platform-lint
+    stage: commit
+    blocking: true
+    impl: gates.impl.platform:PlatformLintGate
+    timeout_seconds: 180
+    description: "ruff check, ruff format --check, mypy on src/trufax and tests/platform"
+
+  - id: QG-4
+    name: platform-tests
+    stage: commit
+    blocking: true
+    impl: gates.impl.platform:PlatformUnitGate
+    timeout_seconds: 600
+    description: "pytest tests/platform with 80% coverage on src/trufax"

@@ -1,0 +1,25 @@
+pack: leads
+version: 1
+description: >
+  Businesses from public directories and websites. Contact fields are flagged as
+  personal data so they can be masked or excluded per client.
+
+entities:
+  Company:
+    description: One business location.
+    key: [name, city]
+    required: [name]
+    fields:
+      name: string
+      category: string
+      website: url
+      phone: string
+      email: { type: string, personal_data: true }
+      street: string
+      city: string
+      region: string
+      country: string
+      rating: decimal
+      review_count: int
+    rules:
+      - { field: rating, min: 0, max: 5 }

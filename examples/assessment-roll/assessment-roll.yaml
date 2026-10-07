@@ -1,0 +1,36 @@
+job: example-assessment-roll
+client: Property analytics team
+description: >
+  Property units from a municipal assessment roll (XML, streamed so files of any size
+  work), in the real-estate pack's Property shape. The pack's rule rejects any unit
+  whose total value is not land + building.
+
+pack: real-estate
+entity: Property
+
+source:
+  type: xml
+  start_urls:
+    - roll-sample.xml
+  xml:
+    record_tag: Unit
+  fields:
+    jurisdiction: { value: "99001" }
+    parcel_id: "@id"
+    civic_number: "Address/Civic"
+    street: "Address/Street"
+    city: "Address/City"
+    use_code: "Use/@code"
+    use: "Use"
+    land_value: { src: "Values/Land", transforms: [fr_number] }
+    building_value: { src: "Values/Building", transforms: [fr_number] }
+    total_value: { src: "Values/Total", transforms: [fr_number] }
+    reference_date: "ReferenceDate"
+    currency: { value: CAD }
+
+validation:
+  rules:
+    - { field: parcel_id, pattern: "\\d{4}-\\d{2}-\\d{4}" }
+
+output:
+  formats: [csv, xlsx]

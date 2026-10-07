@@ -3,31 +3,51 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "qc-property"
-version = "0.1.0"
-description = "Québec City property assessment roll extractor"
+name = "trufax"
+version = "0.2.0"
+description = "Headless, config-driven data platform: web pages, PDFs, XML and APIs into verified datasets with a proof report on every run."
 readme = "README.md"
-authors = [
-    {name = "Your Name", email = "you@example.com"}
-]
-license = {text = "MIT"}
-requires-python = ">=3.12"
+authors = [{ name = "Themba Ngxola", email = "tngxola@gmail.com" }]
+requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.25.0",
+    "parsel>=1.8",
     "lxml>=4.9.0",
+    "pdfplumber>=0.10",
     "pydantic>=2.0.0",
-    "pandas>=2.0.0",
-    "openpyxl>=3.1.0",
-    "tenacity>=8.2.0",
     "PyYAML>=6.0",
+    "tenacity>=8.2.0",
+    "openpyxl>=3.1.0",
+    # used by the Québec extractor package (qc_property)
+    "pandas>=2.0.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
 ]
+
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.1.0", "pytest-cov", "mypy>=1.10", "types-PyYAML"]
+api = ["fastapi>=0.110", "uvicorn>=0.29"]
+browser = ["playwright>=1.40"]
+sheets = ["gspread>=6.0"]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+    "pytest-cov",
+    "mypy>=1.10",
+    "types-PyYAML",
+    "reportlab>=4.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
 
 [project.scripts]
+trufax = "trufax.cli:main"
 qc-property = "qc_property.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+trufax = ["templates/*", "domain_packs/*"]
 
 [tool.ruff]
 line-length = 100
@@ -36,3 +56,11 @@ target-version = "py312"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["pdfplumber.*", "parsel.*", "reportlab.*", "gspread.*", "playwright.*", "uvicorn.*", "lxml.*", "openpyxl.*"]
+ignore_missing_imports = true

@@ -1,0 +1,33 @@
+job: __JOB__
+client: ""
+description: "What this dataset is and who it is for."
+
+source:
+  type: html
+  start_urls:
+    - https://example.com/listing?page=1
+  fetch:
+    engine: http          # use "browser" for JavaScript-heavy sites
+    rate_limit: 1         # requests per second; be polite
+    respect_robots: true
+  html:
+    item_selector: "div.listing"           # one record per match
+    next_page: "a.next::attr(href)"        # remove if there is no pagination
+    max_pages: 5
+    # detail:                              # follow each item to its own page
+    #   link: "a.title::attr(href)"
+    #   fields:
+    #     phone: ".contact .phone::text"
+  fields:
+    name: "h2::text"
+    url: { src: "a.title::attr(href)", type: url }
+    price: { src: ".price::text", type: decimal, transforms: [strip_currency] }
+
+validation:
+  key: [url]
+  required: [name, url]
+  rules:
+    - { field: price, min: 0 }
+
+output:
+  formats: [csv, xlsx]

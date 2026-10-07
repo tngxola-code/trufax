@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fictional sample modelled on a municipal property assessment roll. Not real data. -->
+<Roll xmlns="urn:example:assessment-roll:2026" municipality="99001" year="2026">
+  <Unit id="9900-12-3456">
+    <Address><Civic>120</Civic><Street>Rue des Érables</Street><City>Exempleville</City></Address>
+    <Use code="1000">Single-family dwelling</Use>
+    <Values><Land>182 400</Land><Building>311 600</Building><Total>494 000</Total></Values>
+    <ReferenceDate>2024-07-01</ReferenceDate>
+  </Unit>
+  <Unit id="9900-12-3457">
+    <Address><Civic>124</Civic><Street>Rue des Érables</Street><City>Exempleville</City></Address>
+    <Use code="1000">Single-family dwelling</Use>
+    <Values><Land>179 900</Land><Building>287 300</Building><Total>467 200</Total></Values>
+    <ReferenceDate>2024-07-01</ReferenceDate>
+  </Unit>
+  <Unit id="9900-14-0001">
+    <Address><Civic>2200</Civic><Street>Boulevard du Parc</Street><City>Exempleville</City></Address>
+    <Use code="5000">Commercial</Use>
+    <Values><Land>1 250 000</Land><Building>3 410 500</Building><Total>4 660 500</Total></Values>
+    <ReferenceDate>2024-07-01</ReferenceDate>
+  </Unit>
+  <Unit id="9900-14-0002">
+    <Address><Civic>2210</Civic><Street>Boulevard du Parc</Street><City>Exempleville</City></Address>
+    <Use code="5000">Commercial</Use>
+    <Values><Land>980 000</Land><Building>2 100 000</Building><Total>3 100 000</Total></Values>
+    <ReferenceDate>2024-07-01</ReferenceDate>
+  </Unit>
+  <Unit id="9900-20-0777">
+    <Address><Street>Chemin du Lac</Street><City>Exempleville</City></Address>
+    <Use code="9100">Vacant land</Use>
+    <Values><Land>64 300</Land><Building>0</Building><Total>64 300</Total></Values>
+    <ReferenceDate>2024-07-01</ReferenceDate>
+  </Unit>
+</Roll>

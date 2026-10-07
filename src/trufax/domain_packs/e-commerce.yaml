@@ -1,0 +1,29 @@
+pack: e-commerce
+version: 1
+description: >
+  Products and offers from online stores and marketplaces: catalogue data,
+  prices and stock for price monitoring and competitor tracking.
+
+entities:
+  Product:
+    description: One product as sold by one store.
+    key: [sku]
+    required: [name, price]
+    fields:
+      sku: { type: string, description: "Store SKU, UPC or EAN" }
+      name: string
+      brand: string
+      category: string
+      url: url
+      price: decimal
+      currency: string
+      in_stock: bool
+      stock_qty: int
+      rating: decimal
+      review_count: int
+      seller: string
+      description: string
+    rules:
+      - { field: price, min: 0 }
+      - { field: stock_qty, min: 0 }
+      - { field: rating, min: 0, max: 5 }
