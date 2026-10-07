@@ -8,15 +8,13 @@ from __future__ import annotations
 
 import io
 import re
-from decimal import Decimal
 
 import pdfplumber
 
-from ..config import FieldSpec, TotalCheck
 from ..fetch import Fetched, FetchError
 from ..records import Record
-from ..validate import Check
 from .base import Adapter
+from .tabular import Row, norm_cell, records_with_totals, row_values
 
 
 def parse_pages(spec: str | None, total: int) -> list[int]:
@@ -34,10 +32,6 @@ def parse_pages(spec: str | None, total: int) -> list[int]:
     return [p for p in pages if 0 <= p < total]
 
 
-def _norm(cell) -> str:
-    return re.sub(r"\s+", " ", str(cell or "")).strip()
-
-
 class PdfAdapter(Adapter):
     def extract(self) -> list[Record]:
         records: list[Record] = []
@@ -49,16 +43,22 @@ class PdfAdapter(Adapter):
             except FetchError as e:
                 self.warnings.append(str(e))
                 continue
-            rows = self._rows(doc)
-            records.extend(self._to_records(rows, doc, records))
+            assert self.job.source.pdf is not None
+            totals = self.job.source.pdf.totals
+            try:
+                rows = self._rows(doc)
+            except ValueError as e:  # e.g. a configured column is not in the table
+                self.warnings.append(f"{doc.final_url}: {e}")
+                continue
+            records.extend(records_with_totals(self, rows, doc, totals, len(records)))
         return records
 
     # -- reading ------------------------------------------------------------
-    def _rows(self, doc: Fetched) -> list[tuple[dict[str, str | None], str, str]]:
+    def _rows(self, doc: Fetched) -> list[Row]:
         cfg = self.job.source.pdf
         assert cfg is not None  # set by SourceConfig for pdf sources
         specs = self.job.fields
-        out: list[tuple[dict[str, str | None], str, str]] = []
+        out: list[Row] = []
         skips = [re.compile(p) for p in cfg.skip_rows_matching]
         with pdfplumber.open(io.BytesIO(doc.content)) as pdf:
             headers: list[str] | None = None
@@ -78,7 +78,7 @@ class PdfAdapter(Adapter):
                     continue
                 for tno, raw_table in enumerate(page.extract_tables(cfg.table_settings), 1):
                     table: list[list[str]] = [
-                        [_norm(c) for c in row] for row in raw_table if any(row)
+                        [norm_cell(c) for c in row] for row in raw_table if any(row)
                     ]
                     if not table:
                         continue
@@ -92,82 +92,8 @@ class PdfAdapter(Adapter):
                         line = " ".join(row)
                         if any(s.search(line) for s in skips):
                             continue
-                        raw = {
-                            n: self._cell(row, headers, s, n)
-                            for n, s in specs.items()
-                            if s.extracted
-                        }
+                        raw = row_values(row, headers, specs)
                         out.append((raw, f"page {pno + 1} table {tno} row {rno}", line))
         if not out:
             self.warnings.append(f"no rows extracted from {doc.final_url}")
         return out
-
-    @staticmethod
-    def _cell(row: list[str], headers: list[str], spec: FieldSpec, name: str) -> str | None:
-        src = spec.src if spec.src is not None else name
-        if isinstance(src, list):
-            raise ValueError(  # noqa: TRY004 - a config error, reported like the others
-                f"field '{name}': pdf fields read one column, not a list"
-            )
-        if isinstance(src, int):
-            idx: int | None = src
-        else:
-            wanted = _norm(src).lower()
-            idx = next((i for i, h in enumerate(headers) if h.lower() == wanted), None)
-        if idx is None:
-            raise ValueError(f"column '{src}' not found; table headers are {headers}")
-        return row[idx] if idx < len(row) else None
-
-    # -- records and totals -------------------------------------------------
-    def _to_records(self, rows, doc: Fetched, so_far: list[Record]) -> list[Record]:
-        assert self.job.source.pdf is not None
-        totals = self.job.source.pdf.totals
-        specs = self.job.fields
-        running = {id(t): {f: Decimal(0) for f in t.sum_fields} for t in totals}
-        out: list[Record] = []
-        for raw, locator, line in rows:
-            rec = self.record(raw, specs, doc, locator, context=line if self.ai else None)
-            total = self._matching_total(totals, raw)
-            if total is not None:
-                self._check_total(total, rec, running[id(total)], locator)
-                running[id(total)] = {f: Decimal(0) for f in total.sum_fields}
-                continue
-            for t in totals:
-                for f in t.sum_fields:
-                    v = rec.data.get(f)
-                    if isinstance(v, (int, Decimal)):
-                        running[id(t)][f] += Decimal(v)
-            # in a sample run, keep reading so totals still reconcile; just don't emit
-            if len(so_far) + len(out) < (self.limit or 10**12):
-                out.append(rec)
-        return out
-
-    @staticmethod
-    def _matching_total(totals: list[TotalCheck], raw: dict) -> TotalCheck | None:
-        for t in totals:
-            label = raw.get(t.label_field) or ""
-            if re.search(t.label_regex, str(label)):
-                return t
-        return None
-
-    def _check_total(self, t: TotalCheck, rec: Record, sums: dict, locator: str) -> None:
-        label = rec.data.get(t.label_field)
-        for f in t.sum_fields:
-            printed = rec.data.get(f)
-            if not isinstance(printed, (int, Decimal)):
-                self.checks.append(
-                    Check(
-                        f"'{label}' {f} at {locator}",
-                        False,
-                        f"printed total not numeric: {printed!r}",
-                    )
-                )
-                continue
-            diff = abs(Decimal(printed) - sums[f])
-            self.checks.append(
-                Check(
-                    f"'{label}' {f} matches its rows ({locator})",
-                    diff <= Decimal(str(t.tolerance)),
-                    f"printed {printed}, rows sum to {sums[f]}, difference {diff}",
-                )
-            )

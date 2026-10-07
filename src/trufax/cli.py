@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from . import __version__
 from .config import load_job
+from .fetch import FetchError
 from .runner import run_job
 from .scaffold import export_client_repo, new_job
 
@@ -63,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
 
     n = sub.add_parser("new", help="create a job file from a template")
     n.add_argument("name")
-    n.add_argument("--type", choices=["html", "pdf", "xml"], default="html")
+    n.add_argument("--type", choices=["html", "pdf", "xml", "json", "spreadsheet"], default="html")
     n.add_argument("--dir", default="jobs")
 
     pk = sub.add_parser("packs", help="list domain packs, or show one pack's entities")
@@ -89,9 +90,13 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd in ("run", "sample"):
         job = _load(a.job)
         limit = a.limit if a.cmd == "sample" else None
-        result = run_job(
-            job, base_dir=Path.cwd(), limit=limit, out_root=Path(a.out) if a.out else None
-        )
+        try:
+            result = run_job(
+                job, base_dir=Path.cwd(), limit=limit, out_root=Path(a.out) if a.out else None
+            )
+        except FetchError as e:  # e.g. a ${env:NAME} secret that is not set
+            print(f"{a.job}: {e}", file=sys.stderr)
+            return 2
         return _summary(result)
     if a.cmd == "check":
         job = _load(a.job)

@@ -15,3 +15,12 @@ def examples() -> Path:
 def _no_proxy_for_localhost(monkeypatch):
     monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
     monkeypatch.setenv("no_proxy", "127.0.0.1,localhost")
+
+
+@pytest.fixture(autouse=True)
+def _reset_env_policy():
+    """The API restricts ${env:...} names process-wide; undo it between tests."""
+    from trufax.fetch import restrict_env
+
+    yield
+    restrict_env(None)

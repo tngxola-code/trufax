@@ -1,0 +1,40 @@
+job: __JOB__
+client: ""
+description: "What this dataset is and who it is for."
+
+# Optional: give every job in a domain the same shape
+# pack: e-commerce
+# entity: Product
+
+source:
+  type: json
+  start_urls:
+    - https://api.example.com/v1/products
+  fetch:
+    rate_limit: 2
+    headers:
+      # secrets come from the environment, never the job file
+      Authorization: "Bearer ${env:EXAMPLE_API_TOKEN}"
+  json:
+    records: "data.items"          # dotted path to the list; "" if the response is a list
+    params: { status: active }
+    pagination:
+      type: page                   # none | page | offset | cursor | next_url
+      param: page
+      size_param: per_page
+      size: 100
+      # cursor:   cursor_path: "meta.next_cursor"
+      # next_url: next_url_path: "links.next"
+  fields:
+    sku: "id"
+    name: "title"
+    price: { src: "price.amount", type: decimal }
+    currency: "price.currency"
+    image: "images.0.url"
+
+validation:
+  key: [sku]
+  required: [sku, name]
+
+output:
+  formats: [csv, xlsx, json]

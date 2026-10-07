@@ -1,0 +1,36 @@
+job: example-products-api
+client: Example Supply Co.
+description: >
+  Products from a paged JSON API, in the e-commerce pack's Product shape. Offline demo:
+  two response pages saved as files, linked by "links.next". Against a live API, set
+  start_urls to the endpoint and put the token in an environment variable.
+
+pack: e-commerce
+entity: Product
+
+source:
+  type: json
+  start_urls:
+    - products-page-1.json
+  # Live API: uncomment and set EXAMPLE_API_TOKEN in the environment
+  # fetch:
+  #   headers: { Authorization: "Bearer ${env:EXAMPLE_API_TOKEN}" }
+  json:
+    records: "data.items"
+    pagination:
+      type: next_url
+      next_url_path: "links.next"
+  fields:
+    sku: "id"
+    name: "title"
+    brand: "brand"
+    price: "price.amount"
+    currency: "price.currency"
+    stock_qty: "stock"
+    in_stock: { src: "stock", transforms: [nonzero] }
+    rating: "rating"
+    review_count: "reviews"
+    category: "tags.0"
+
+output:
+  formats: [csv, xlsx, json]

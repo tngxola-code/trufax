@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -35,6 +37,41 @@ RETRY_STATUS = {408, 425, 429, 500, 502, 503, 504}
 
 class FetchError(RuntimeError):
     pass
+
+
+ENV_REF = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+_ENV_PREFIX: str | None = None
+
+
+def restrict_env(prefix: str | None) -> None:
+    """Only allow ``${env:...}`` names with this prefix. The HTTP API sets this so a job
+    submitted over the network cannot read the server's other environment variables
+    (its own API key, cloud credentials) and send them to a site it chooses."""
+    global _ENV_PREFIX
+    _ENV_PREFIX = prefix
+
+
+def expand_env(value: str, secrets: set[str] | None = None) -> str:
+    """Replace ``${env:NAME}`` with the environment variable's value, so tokens and keys
+    never sit in job files. Values substituted this way are recorded as secrets and
+    redacted from URLs and messages written to outputs."""
+
+    def substitute(m: re.Match[str]) -> str:
+        name = m.group(1)
+        if _ENV_PREFIX and not name.startswith(_ENV_PREFIX):
+            raise FetchError(
+                f"${{env:{name}}} is not allowed here; use a name starting with {_ENV_PREFIX}"
+            )
+        val = os.environ.get(name)
+        if val is None:
+            raise FetchError(f"environment variable {name} is not set")
+        if secrets is not None and val:
+            secrets.add(val)
+        return val
+
+    return ENV_REF.sub(substitute, value)
 
 
 class BlockedByRobots(FetchError):
@@ -108,13 +145,21 @@ class Fetcher:
         self._robots: dict[str, RobotFileParser | None] = {}
         self._client: httpx.Client | None = None
         self.log: list[Fetched] = []
+        self.secrets: set[str] = set()
+        self.headers = {k: expand_env(v, self.secrets) for k, v in settings.headers.items()}
+        self.proxy = expand_env(settings.proxy, self.secrets) if settings.proxy else None
+
+    def redact(self, text: str) -> str:
+        for secret in sorted(self.secrets, key=len, reverse=True):
+            text = text.replace(secret, "***")
+        return text
 
     def __enter__(self) -> Self:
         self._client = httpx.Client(
             timeout=self.s.timeout,
             follow_redirects=True,
-            headers={"User-Agent": self.s.user_agent, **self.s.headers},
-            proxy=self.s.proxy,
+            headers={"User-Agent": self.s.user_agent, **self.headers},
+            proxy=self.proxy,
         )
         return self
 
@@ -124,10 +169,11 @@ class Fetcher:
 
     # -- public -----------------------------------------------------------
     def get(self, url: str) -> Fetched:
-        if is_local(url):
-            result = self._read_local(url)
-        else:
-            result = self._get_remote(url)
+        try:
+            result = self._read_local(url) if is_local(url) else self._get_remote(url)
+        except FetchError as e:
+            raise type(e)(self.redact(str(e))) from None
+        result.url, result.final_url = self.redact(result.url), self.redact(result.final_url)
         self.log.append(result)
         return result
 
@@ -220,10 +266,10 @@ class BrowserFetcher(Fetcher):
             ) from e
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(
-            proxy={"server": self.s.proxy} if self.s.proxy else None
+            proxy={"server": self.proxy} if self.proxy else None
         )
         self._page = self._browser.new_page(
-            user_agent=self.s.user_agent, extra_http_headers=self.s.headers
+            user_agent=self.s.user_agent, extra_http_headers=self.headers
         )
         return self
 

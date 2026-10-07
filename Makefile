@@ -18,6 +18,8 @@ gates:
 
 demo:
 	cd examples/catalog && trufax run catalog.yaml
+	cd examples/api && trufax run products.yaml
+	cd examples/spreadsheet && trufax run price-list.yaml
 	cd examples/budget && trufax run budget.yaml
 	cd examples/assessment-roll && trufax run assessment-roll.yaml
 

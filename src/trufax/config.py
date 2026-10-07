@@ -94,18 +94,60 @@ class PdfSettings(Strict):
     totals: list[TotalCheck] = Field(default_factory=list)
 
 
+class Pagination(Strict):
+    """How a JSON API is paged. ``page`` and ``offset`` set a query parameter, ``cursor``
+    passes back a token read from each response, ``next_url`` follows a link in it."""
+
+    type: Literal["none", "page", "offset", "cursor", "next_url"] = "none"
+    param: str = "page"
+    start: int | None = Field(None, description="first page (default 1) or offset (default 0)")
+    size_param: str | None = None
+    size: int | None = Field(None, ge=1)
+    cursor_path: str | None = None
+    next_url_path: str | None = None
+    max_pages: int = Field(100, ge=1)
+
+    @model_validator(mode="after")
+    def _complete(self) -> Pagination:
+        if self.type == "cursor" and not self.cursor_path:
+            raise ValueError("cursor pagination needs cursor_path")
+        if self.type == "next_url" and not self.next_url_path:
+            raise ValueError("next_url pagination needs next_url_path")
+        if self.type == "offset" and not self.size:
+            raise ValueError("offset pagination needs size")
+        return self
+
+
+class JsonSettings(Strict):
+    records: str = Field("", description='dotted path to the list of records; "" = the root')
+    params: dict[str, str | int] = Field(default_factory=dict)
+    pagination: Pagination = Field(default_factory=Pagination)
+
+
+class SpreadsheetSettings(Strict):
+    format: Literal["auto", "csv", "xlsx"] = "auto"
+    sheet: str | int = Field(0, description="sheet name, or 0-based index")
+    header_row: int = Field(1, ge=1, description="spreadsheet row number of the headers")
+    delimiter: str | None = Field(None, description="CSV only; detected when omitted")
+    encoding: str = "utf-8-sig"
+    skip_rows_matching: list[str] = Field(default_factory=list)
+    totals: list[TotalCheck] = Field(default_factory=list)
+
+
 class XmlSettings(Strict):
     record_tag: str = Field(..., description="local tag name of one record element")
 
 
 class SourceConfig(Strict):
-    type: Literal["html", "pdf", "xml"]
+    type: Literal["html", "pdf", "xml", "json", "spreadsheet"]
     start_urls: list[str] = Field(default_factory=list)
     fetch: FetchSettings = Field(default_factory=FetchSettings)
     fields: dict[str, FieldSpec | str]
     html: HtmlSettings | None = None
     pdf: PdfSettings | None = None
     xml: XmlSettings | None = None
+    json_api: JsonSettings | None = Field(None, alias="json")
+    spreadsheet: SpreadsheetSettings | None = None
 
     @model_validator(mode="after")
     def _settings_for_type(self) -> SourceConfig:
@@ -115,6 +157,10 @@ class SourceConfig(Strict):
             self.html = HtmlSettings()
         if self.type == "pdf" and self.pdf is None:
             self.pdf = PdfSettings()
+        if self.type == "json" and self.json_api is None:
+            self.json_api = JsonSettings()
+        if self.type == "spreadsheet" and self.spreadsheet is None:
+            self.spreadsheet = SpreadsheetSettings()
         if self.type == "xml" and self.xml is None:
             raise ValueError("source.xml.record_tag is required for xml sources")
         if self.type == "pdf" and self.pdf and self.pdf.mode == "text" and not self.pdf.row_regex:

@@ -1,0 +1,15 @@
+{
+  "data": {
+    "items": [
+      {"id": "DRL-1001", "title": "Cordless Hand Drill", "brand": "Bosch",
+       "price": {"amount": "1249.00", "currency": "ZAR"}, "stock": 14,
+       "rating": 4.6, "reviews": 212, "tags": ["power tools", "drills"],
+       "images": [{"url": "https://cdn.example.com/drl-1001.jpg"}]},
+      {"id": "MSR-0208", "title": "Tape Measure 8m", "brand": "Stanley",
+       "price": {"amount": "189.50", "currency": "ZAR"}, "stock": 102,
+       "rating": 4.8, "reviews": 530, "tags": ["measuring"],
+       "images": [{"url": "https://cdn.example.com/msr-0208.jpg"}]}
+    ]
+  },
+  "links": {"next": "products-page-2.json"}
+}
