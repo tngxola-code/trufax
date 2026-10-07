@@ -11,7 +11,7 @@ from trufax.config import load_job
 from trufax.scaffold import export_client_repo, new_job
 
 
-@pytest.mark.parametrize("kind", ["html", "pdf", "xml"])
+@pytest.mark.parametrize("kind", ["html", "pdf", "xml", "json", "spreadsheet"])
 def test_templates_are_valid(tmp_path, kind):
     path = new_job(f"my-{kind}", kind, tmp_path)
     assert load_job(path).source.type == kind

@@ -1,0 +1,35 @@
+job: example-price-list
+client: Example Supply Co.
+description: >
+  A supplier's Excel price list (sheet "Stock", headers on row 3), in the e-commerce
+  pack's Product shape. The printed "Total stock" row is a check, not a record: the
+  quantities above it must add up to it. Duplicate SKUs and negative prices are
+  rejected with the spreadsheet row number, so the supplier can find and fix them.
+
+pack: e-commerce
+entity: Product
+
+source:
+  type: spreadsheet
+  start_urls:
+    - supplier-price-list.xlsx
+  spreadsheet:
+    sheet: Stock
+    header_row: 3
+    skip_rows_matching: ["^Notes"]
+    totals:
+      - label_field: name
+        label_regex: "(?i)^total"
+        sum_fields: [stock_qty]
+  fields:
+    sku: "SKU"
+    name: "Product"
+    brand: "Brand"
+    category: "Category"
+    price: "Unit price"
+    currency: { value: ZAR }
+    stock_qty: "Qty on hand"
+    in_stock: { src: "Qty on hand", transforms: [nonzero] }
+
+output:
+  formats: [csv, xlsx]

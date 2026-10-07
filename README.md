@@ -39,10 +39,11 @@ proof report showing what was collected, from where, and which checks it passed.
 
 | Area | Capability |
 |---|---|
-| Sources | Web pages (CSS/XPath, pagination, detail pages, optional headless browser), PDF tables or text (multi-page tables, printed-total reconciliation), XML of any size (streamed, namespace-agnostic) |
-| Fetching | Rate limit, retries with backoff, robots.txt, disk cache, headers, proxy |
+| Sources | Web pages (CSS/XPath, pagination, detail pages, optional headless browser), JSON APIs (page, offset, cursor or next-link paging; token auth), CSV and Excel (sheet and header row, real row numbers), PDF tables or text, XML of any size (streamed, namespace-agnostic) |
+| Reconciliation | Printed total rows in PDFs and spreadsheets become checks: the rows above must add up |
+| Fetching | Rate limit, retries with backoff, robots.txt, disk cache, headers, proxy; secrets as `${env:NAME}`, redacted from all outputs |
 | Domain packs | `real-estate` (Property, Sale, Listing), `e-commerce` (Product), `public-finance` (BudgetLine), `leads` (Company); add your own with `TRUFAX_PACKS` |
-| Cleaning | 7 field types, 11 transforms, fixed values, accounting negatives, French number format |
+| Cleaning | 7 field types, 12 transforms, fixed values, accounting negatives, French number format |
 | Trust | Required, min/max, pattern, one_of, sum_of rules; key-based de-duplication; every extracted record accounted for; provenance and SHA-256 per record |
 | Local AI | `llm` fields via Ollama with JSON-schema output and a citation check |
 | Outputs | CSV, Excel, JSON, rejected.csv with reasons, manifest.json, one-page proof-report.html, optional Google Sheets |
@@ -56,7 +57,7 @@ proof report showing what was collected, from where, and which checks it passed.
 
 ```bash
 pip install -e '.[dev]'
-make demo        # three offline examples: an HTML catalogue, a budget PDF, an assessment roll
+make demo        # five offline examples: HTML catalogue, JSON API, Excel price list, budget PDF, assessment roll
 make gates       # the commit-stage quality gates
 ```
 
@@ -100,6 +101,50 @@ source:
 
 The real-estate pack's rule `total_value = land_value + building_value` then rejects any
 unit where the roll does not add up, with the reason in `rejected.csv`.
+
+### JSON APIs
+
+```yaml
+source:
+  type: json
+  start_urls: [https://api.example.com/v1/products]
+  fetch:
+    headers: { Authorization: "Bearer ${env:SHOP_API_TOKEN}" }
+  json:
+    records: "data.items"
+    pagination: { type: page, size_param: per_page, size: 100 }
+    # or: { type: cursor, param: cursor, cursor_path: "meta.next_cursor" }
+    # or: { type: next_url, next_url_path: "links.next" }
+    # or: { type: offset, param: offset, size_param: limit, size: 100 }
+  fields:
+    sku: "id"
+    price: "price.amount"
+    image: "images.0.url"
+```
+
+Tokens and keys are read from the environment with `${env:NAME}`, never written in the
+job file, and every value read this way is replaced with `***` in URLs, manifests and
+reports. Fields use dotted paths; lists of values are joined, nested objects are kept as JSON.
+
+### Spreadsheets
+
+```yaml
+source:
+  type: spreadsheet
+  start_urls: [supplier-price-list.xlsx]     # .xlsx or .csv, local or https://
+  spreadsheet:
+    sheet: Stock
+    header_row: 3
+    totals:
+      - { label_field: name, label_regex: "(?i)^total", sum_fields: [stock_qty] }
+  fields:
+    sku: "SKU"
+    price: "Unit price"
+```
+
+Records point to real row numbers ("Stock row 14"), so whoever owns the file can find
+and fix a rejected row. CSV delimiters are detected; dates and numbers from Excel arrive
+in the form the transforms expect.
 
 ### A domain pack
 
@@ -155,7 +200,8 @@ TRUFAX_API_KEY=change-me trufax serve --home trufax-home
 | GET | `/v1/runs/{id}/data?format=json\|csv\|xlsx&rejected=` | The data |
 
 Send `Authorization: Bearer <key>` or `X-API-Key: <key>`. Jobs saved through the API may
-only read local files inside `TRUFAX_HOME/data`. Interactive docs are at `/docs`.
+only read local files inside `TRUFAX_HOME/data`, and may only use secrets named
+`TRUFAX_SECRET_*`, so a submitted job cannot read the server's other environment variables. Interactive docs are at `/docs`.
 
 ### Docker
 
@@ -173,7 +219,7 @@ This starts the API on port 8000 and a local model server it can use for `llm` f
 ```
 src/trufax/          the platform engine
   config.py          job schema        packs.py       domain packs
-  fetch.py           polite fetching   adapters/      html, pdf, xml
+  fetch.py           polite fetching   adapters/      html, json, spreadsheet, pdf, xml
   transforms.py      cleaning, typing  validate.py    rules, de-duplication
   ai.py              local model extraction with citation check
   export.py          outputs           report.py      manifest, proof report
@@ -194,7 +240,6 @@ marked for confirmation against a downloaded roll file.
 
 | Next | Why |
 |---|---|
-| JSON API and spreadsheet sources | Many sources are hidden APIs or client spreadsheets |
 | Docling for scanned and complex PDFs | Layout-aware tables and OCR without manual setup |
 | Scheduled runs and change detection | New, changed and removed records between runs |
 | Canonical store with history | Ask what was true on any date; join entities across sources |

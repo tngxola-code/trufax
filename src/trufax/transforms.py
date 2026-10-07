@@ -34,6 +34,14 @@ def _fr_number(v: str) -> str:
     return v.replace(".", "").replace(",", ".") if "," in v else v
 
 
+def _nonzero(v: str) -> str:
+    """'14' -> 'true', '0' -> 'false': stock counts into in-stock flags."""
+    try:
+        return "true" if Decimal(_number_text(v) or "0") != 0 else "false"
+    except InvalidOperation:
+        return v
+
+
 SIMPLE: dict[str, Callable[[str], str]] = {
     "strip": str.strip,
     "lower": str.lower,
@@ -44,6 +52,7 @@ SIMPLE: dict[str, Callable[[str], str]] = {
     "remove_commas": lambda v: v.replace(",", ""),
     "digits": lambda v: re.sub(r"\D", "", v),
     "fr_number": _fr_number,
+    "nonzero": _nonzero,
 }
 
 

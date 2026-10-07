@@ -1,0 +1,14 @@
+{
+  "data": {
+    "items": [
+      {"id": "PPE-0410", "title": "Safety Gloves (pair)", "brand": null,
+       "price": {"amount": "64.99", "currency": "ZAR"}, "stock": 0,
+       "rating": 4.1, "reviews": 48, "tags": ["safety"], "images": []},
+      {"id": "LGT-0050", "title": "LED Work Light", "brand": "Ryobi",
+       "price": {"amount": "449.00", "currency": "ZAR"}, "stock": 3,
+       "rating": 7.5, "reviews": 9, "tags": ["lighting"],
+       "images": [{"url": "https://cdn.example.com/lgt-0050.jpg"}]}
+    ]
+  },
+  "links": {"next": null}
+}

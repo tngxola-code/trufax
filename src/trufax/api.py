@@ -9,6 +9,9 @@ Run it with ``trufax serve`` (needs ``pip install 'trufax[api]'``). State lives 
 
 Set ``TRUFAX_API_KEY`` to require ``Authorization: Bearer <key>`` (or ``X-API-Key``)
 on every endpoint except ``/health``.
+
+Jobs run through the API may only reference secrets named ``TRUFAX_SECRET_*`` in
+``${env:...}``, so a submitted job cannot read the server's other variables.
 """
 
 from __future__ import annotations
@@ -30,11 +33,13 @@ from pydantic import ValidationError
 
 from . import __version__
 from .config import UnsafePath, parse_job
+from .fetch import restrict_env
 from .packs import PackError, available_packs, get_pack
 from .runner import new_run_id, run_job
 
 log = logging.getLogger(__name__)
 
+SECRET_PREFIX = "TRUFAX_SECRET_"
 JOB_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 RUN_ID = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{6}(-sample)?$")
 
@@ -96,6 +101,7 @@ def _check_key(request: Request) -> None:
 
 
 def create_app(home: Path | None = None) -> FastAPI:
+    restrict_env(SECRET_PREFIX)
     store = Store(
         Path(home or os.environ.get("TRUFAX_HOME", "trufax-home")),
         int(os.environ.get("TRUFAX_MAX_RUNS", "2")),

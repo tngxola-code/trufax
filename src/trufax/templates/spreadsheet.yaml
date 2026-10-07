@@ -1,0 +1,25 @@
+job: __JOB__
+client: ""
+description: "What this dataset is and who it is for."
+
+source:
+  type: spreadsheet
+  start_urls:
+    - files/price-list.xlsx        # .xlsx or .csv, local path or https:// URL
+  spreadsheet:
+    sheet: 0                       # sheet name, or 0-based index
+    header_row: 1                  # spreadsheet row number of the headers
+    skip_rows_matching: ["^Notes"]
+    totals:                        # printed totals become reconciliation checks
+      - label_field: item
+        label_regex: "(?i)^total"
+        sum_fields: [amount]
+  fields:
+    item: "Item"                   # column header (or a 0-based column index)
+    amount: { src: "Amount", type: decimal }
+
+validation:
+  required: [item, amount]
+
+output:
+  formats: [csv, xlsx]
