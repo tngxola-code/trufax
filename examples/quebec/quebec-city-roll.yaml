@@ -1,0 +1,42 @@
+# Québec City assessment roll (MEFQ open-format XML) in the real-estate pack.
+#
+# Status: TEMPLATE. Tag codes come from the MEFQ data dictionary; confirm two things
+# against a downloaded file before relying on it:
+#   1. record_tag: the element that wraps one evaluation unit (assumed RLUEx)
+#   2. how the eight matricule parts (RL0104A..H) should be joined
+# The civic address sits in the repeated RL0101x group; map its sub-fields once a
+# real file has been inspected.
+#
+# The current XML link for Québec City (geographic code 23027) is listed in
+# https://donneesouvertes.affmunqc.net/role/indexRole2026.csv
+job: quebec-city-roll
+client: PropLedger Quebec
+description: Québec City property assessment roll, 2026, as canonical Property records.
+
+pack: real-estate
+entity: Property
+
+source:
+  type: xml
+  start_urls:
+    - https://donneesouvertes.affmunqc.net/role/REPLACE-WITH-LINK-FROM-INDEX.xml
+  fetch:
+    rate_limit: 0.5
+    timeout: 300
+  xml:
+    record_tag: RLUEx
+  fields:
+    jurisdiction: "//RLM01A"
+    parcel_id:
+      src: ["//RL0104A", "//RL0104B", "//RL0104C", "//RL0104D",
+            "//RL0104E", "//RL0104F", "//RL0104G", "//RL0104H"]
+      join: "-"
+    use_code: "//RL0105A"
+    reference_date: { src: "//RL0401A", date_formats: ["%Y-%m-%d", "%Y%m%d"] }
+    land_value: { src: "//RL0402A", transforms: [fr_number] }
+    building_value: { src: "//RL0403A", transforms: [fr_number] }
+    total_value: { src: "//RL0404A", transforms: [fr_number] }
+    currency: { value: CAD }
+
+output:
+  formats: [csv, xlsx]

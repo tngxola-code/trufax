@@ -2,307 +2,209 @@
 
 **From raw data to trusted decisions.**
 
-[![Website](https://img.shields.io/badge/website-trufax.dev-blue)]()
-[![Docs](https://img.shields.io/badge/docs-docs.trufax.dev-green)]()
-[![Status](https://img.shields.io/badge/status-alpha-orange)]()
-
-> **Trufax** - internet slang for "true facts." It meant verified truth before anyone built a company around it. We're bringing it back as a platform that turns fragmented data into provable, trusted decisions - across any domain.
+> **Trufax**: internet slang for "true facts." A platform that turns fragmented public
+> and enterprise data into canonical datasets you can prove, in any domain.
 
 ---
 
 ## The problem
 
-Every organization that works with public or enterprise data hits the same wall.
-
-The data you need exists. It's authoritative. It's public. And it's useless in its current form.
-
-A government registry is spread across hundreds of files - one per agency, each with its own schema. A health authority publishes patient outcomes as scanned PDFs going back to 2005. A legal gazette releases notices as HTML with no consistent structure. A financial regulator publishes filings in a different format every quarter. A procurement portal exposes tender data across a dozen disconnected sites. An environmental agency ships sensor readings as compressed archives with a different column order each month.
-
-You can't query it. You can't join it. You can't audit it. You can't prove where a number came from.
-
-So teams do what teams always do: they write scrapers. They write parsers. They write mapping code. They write it again for the next source. They write it again for the next domain. Six months later, half the scrapers are broken, nobody knows which version produced which number, and the analyst who built it has left the company.
+The data you need usually exists, is authoritative, and is useless in its current form:
+a registry split across hundreds of files, budgets locked in PDFs, listings spread over
+dozens of websites, each with its own layout. Teams write a scraper per source, a parser
+per format and mapping code per domain. Six months later half of it is broken and nobody
+can say which version produced which number.
 
 **This is not a data problem. It's a trust problem.**
 
-And it is the same problem in every domain - government, health, legal, financial, procurement, environment, education, immigration. The surface changes. The shape does not.
+## What Trufax does
+
+Trufax is a **headless, config-driven** extraction platform. You describe a job in YAML;
+the engine fetches, extracts, cleans, validates and delivers it, and every run produces a
+proof report showing what was collected, from where, and which checks it passed.
+
+- **No code per source.** A new website, PDF or XML feed is a new YAML file.
+- **No code per domain.** A domain pack defines the shape of the data once; every job in
+  that domain produces the same columns, keys and checks.
+- **Headless.** Everything runs from the CLI or the HTTP API. Dashboards, client
+  deliverables and AI agents are consumers of the same API.
+- **Provable.** Every record carries its source URL, its exact location in the source and
+  the SHA-256 of the source bytes. Rejected records are listed with the reason.
+- **Local AI, optional.** Fields can be filled by a model running on your own machine
+  (Ollama), and every model-extracted value must appear in the source text or it is rejected.
 
 ---
 
-## What Trufax solves
+## Works today
 
-Trufax turns fragmented, heterogeneous, untrusted sources into **canonical, provable, composable datasets** - driven entirely by configuration.
-
-You declare a domain. You declare sources, formats, and mappings. Trufax does the rest: fetch, parse, transform, validate, publish, and prove.
-
-**You do not write code for each new source. You write configuration.**
-
-**You do not build a new pipeline for each new domain. You write a new config.**
-
-Trufax is domain-agnostic by design. Government registries, health records, legal notices, financial filings, procurement data, environmental monitoring, education statistics, immigration records - they are all the same shape. Only the configuration changes.
-
----
-
-## The journey: from data to trusted decisions
-
-Trufax is built around a simple progression:
-
-```
-Raw data  -->  Information  -->  Knowledge  -->  Trusted decision
-```
-
-| Stage | What happens | What you get |
-|---|---|---|
-| **Raw data** | Fragmented sources in any format | XML, CSV, PDF, HTML, scans, archives, images |
-| **Information** | Parsed, typed, validated records | Structured data with contract enforcement |
-| **Knowledge** | Canonical entities, relationships, history | Queryable, joinable, versioned facts |
-| **Trusted decision** | Provenance, verification, audit | Every fact traces to its source, with proof |
-
-Most tools stop at **raw data** or **information**. Trufax goes all the way to **trusted decision**.
-
----
-
-## What you get
-
-| What | Why it matters |
+| Area | Capability |
 |---|---|
-| **Config-driven extraction** | Onboard a new domain by writing YAML, not deploying code |
-| **Any format** | XML, CSV, JSON, PDF, Excel, HTML, images, archives |
-| **Canonical model** | One schema across all sources, not one per source |
-| **Provable provenance** | Every fact traces to its source bytes, with cryptographic proof |
-| **Bi-temporal history** | Ask what was true then, not just what is true now |
-| **Workspace** | Teams organize data, tasks, reports, and documents in one place |
-| **API-first** | Every capability reachable programmatically, versioned, tenant-scoped |
-| **Deploy anywhere** | SaaS, on-prem, or air-gapped - your choice |
+| Sources | Web pages (CSS/XPath, pagination, detail pages, optional headless browser), PDF tables or text (multi-page tables, printed-total reconciliation), XML of any size (streamed, namespace-agnostic) |
+| Fetching | Rate limit, retries with backoff, robots.txt, disk cache, headers, proxy |
+| Domain packs | `real-estate` (Property, Sale, Listing), `e-commerce` (Product), `public-finance` (BudgetLine), `leads` (Company); add your own with `TRUFAX_PACKS` |
+| Cleaning | 7 field types, 11 transforms, fixed values, accounting negatives, French number format |
+| Trust | Required, min/max, pattern, one_of, sum_of rules; key-based de-duplication; every extracted record accounted for; provenance and SHA-256 per record |
+| Local AI | `llm` fields via Ollama with JSON-schema output and a citation check |
+| Outputs | CSV, Excel, JSON, rejected.csv with reasons, manifest.json, one-page proof-report.html, optional Google Sheets |
+| Interfaces | CLI (`run`, `sample`, `check`, `new`, `packs`, `export-repo`, `serve`) and HTTP API |
+| Delivery | `export-repo` builds a standalone repository a client owns and can run without you |
+| Quality | Quality gates QG-1 to QG-4 (lint, types, tests, 80% coverage), Docker image and compose file |
 
 ---
 
-## How it works (in plain language)
+## Quick start
 
-Trufax is **configuration-driven**. You describe your domain in a declarative file. Trufax reads that file and builds the pipeline.
+```bash
+pip install -e '.[dev]'
+make demo        # three offline examples: an HTML catalogue, a budget PDF, an assessment roll
+make gates       # the commit-stage quality gates
+```
 
-Here is what a domain looks like - a public registry spread across multiple agencies and formats:
+Each run writes `output/<job>/<run-id>/` containing `data.csv`, `data.xlsx`,
+`rejected.csv`, `manifest.json` and `proof-report.html`.
+
+```bash
+trufax packs                              # list domain packs
+trufax packs real-estate                  # entities and fields of one pack
+trufax new acme-prices --type html        # job file from a template
+trufax check jobs/acme-prices.yaml        # validate without fetching
+trufax sample jobs/acme-prices.yaml       # 20 records + proof report
+trufax run jobs/acme-prices.yaml          # full run
+trufax export-repo jobs/acme-prices.yaml --out ../acme-delivery
+```
+
+---
+
+## How a job looks
+
+A job names a pack and an entity, then says where each field comes from. Types, keys,
+required fields and rules come from the pack.
 
 ```yaml
-domain: national-public-registry
+job: example-assessment-roll
+pack: real-estate
+entity: Property
 
-sources:
-  - id: agency-index
-    format: csv
-    url: https://registry.example.gov/agencies.csv
+source:
+  type: xml
+  start_urls: [roll-sample.xml]
+  xml: { record_tag: Unit }
+  fields:
+    jurisdiction: { value: "99001" }
+    parcel_id: "@id"
+    street: "Address/Street"
+    land_value: { src: "Values/Land", transforms: [fr_number] }
+    building_value: { src: "Values/Building", transforms: [fr_number] }
+    total_value: { src: "Values/Total", transforms: [fr_number] }
+```
 
-  - id: agency-records
-    format: xml
-    url: "{{ index.rows.*.url }}"
+The real-estate pack's rule `total_value = land_value + building_value` then rejects any
+unit where the roll does not add up, with the reason in `rejected.csv`.
 
-  - id: historical-archive
-    format: pdf
-    url: "https://archive.example.gov/{{ year }}/records.pdf"
+### A domain pack
 
-parsers:
-  - id: xml-records
-    format: xml
-    schema: schemas/records.xsd
-
-  - id: pdf-archive
-    format: pdf
-    engine: pdfplumber
-    options: { layout: true, ocr: fallback }
-
-mappings:
-  - from: xml-records
+```yaml
+pack: e-commerce
+entities:
+  Product:
+    key: [sku]
+    required: [name, price]
     fields:
-      - source: "RecordId"
-        target: record.identifier
-      - source: "Value"
-        target: valuation.amount
-
-  - from: pdf-archive
-    fields:
-      - source: "regex:Record No\\. (\\d+)"
-        target: record.identifier
-
-canonical:
-  entities:
-    - name: record
-      keys: [record_id]
-    - name: valuation
-      keys: [record_id]
-
-contracts:
-  - entity: record
+      sku: string
+      name: string
+      price: decimal
+      in_stock: bool
+      rating: decimal
     rules:
-      - record_id is unique
-      - identifier is not null
-  - entity: valuation
-    rules:
-      - amount >= 0
+      - { field: rating, min: 0, max: 5 }
 ```
 
-That's it. No Python. No ETL code. No per-agency if-statements.
+Built-in packs live in `src/trufax/domain_packs/`. Point `TRUFAX_PACKS` at a folder of
+your own pack files to add domains without touching the code.
 
-**The same pattern works for any domain.** A health registry, a legal gazette, a financial filing system, a procurement portal - the configuration changes, the platform does not.
+### Local AI fields
 
-Register the domain. Trigger a run. Query the result. Prove it.
-
-```bash
-trufax domains register domains/public-registry.yaml
-trufax runs trigger --domain public-registry
-trufax query --domain public-registry \
-  "SELECT agency, AVG(amount) FROM record JOIN valuation USING (record_id) GROUP BY 1"
-trufax export --domain public-registry --format xlsx --output records.xlsx
-trufax verify --run-id <run_id>
+```yaml
+ai: { base_url: "http://localhost:11434", model: "qwen3:4b" }
+source:
+  fields:
+    brand: { llm: "the manufacturer's brand name" }
 ```
 
-**Onboarding a second domain - health, legal, financial, procurement - is the same process.** Write a config. Register it. Run it.
+The model reads each record's text, returns JSON constrained to the field schema, and is
+told to copy values verbatim. A value that does not appear in the source text is rejected.
+Model-filled fields are named in the `_ai_fields` column with the model that filled them.
 
 ---
 
-## What makes it trustworthy
+## Headless API
 
-Trust is not a feature. It's the architecture.
-
-Every run produces a **signed manifest**:
-- Source URLs and retrieval timestamps
-- Byte sizes and SHA-256 hashes
-- Parser versions, mapping versions, extractor versions
-- Record counts and error counts
-- An Ed25519 signature over the entire manifest
-
-Every fact is **traceable**:
-```
-canonical value --> raw source tag --> retained source artifact --> run manifest
-```
-
-Every run is **verifiable**:
 ```bash
-trufax verify --run-id <run_id>
+pip install -e '.[api]'
+TRUFAX_API_KEY=change-me trufax serve --home trufax-home
 ```
-This re-hashes the retained source bytes and compares them against the manifest. If they match, the run is verified. If they don't, you know exactly which source changed and when.
 
-Every fact is **explainable**:
-```bash
-trufax provenance explain <record_id>
-```
-This returns the full chain from the canonical value back to the source bytes.
-
-**No external service required.** Optionally, you can anchor manifest hashes to RFC 3161 timestamps or a public transparency log for independent third-party attestation.
-
----
-
-## One platform. Every fragmented domain.
-
-Trufax is domain-agnostic. If your data is fragmented, heterogeneous, and needs to be trustworthy, Trufax fits.
-
-**Government and public sector**
-Extract registries, permits, licenses, and public records across fragmented agencies. Publish open data as canonical, queryable datasets. Preserve provenance for FOI requests. Meet open-government commitments without building per-department pipelines.
-
-**Health and life sciences**
-Extract clinical registries, patient outcomes, trial data, and publications. Preserve lineage across decades of records. Support reproducible research and regulatory submissions.
-
-**Legal and regulatory**
-Extract gazettes, notices, court filings, and regulations. Trace every clause to its source document. Prove compliance to auditors.
-
-**Financial services**
-Extract filings, prospectuses, disclosures, and transaction records. Derive facts with bi-temporal history. Prove to regulators that a number came from a specific page of a specific filing.
-
-**Procurement and supply chain**
-Extract tender notices, award records, and supplier registries across disconnected portals. Join across jurisdictions. Prove sourcing decisions.
-
-**Environment and climate**
-Extract monitoring data, permits, emissions records, and sensor feeds. Join across agencies and time periods. Prove environmental compliance.
-
-**Education and research**
-Extract enrollment statistics, credentials, funding records, and publications. Preserve lineage. Support reproducible analysis.
-
-**Immigration and borders**
-Extract visa records, residency permits, and border statistics. Join across agencies. Prove chain of custody.
-
-**Real estate and property**
-Extract assessment rolls, land titles, permits, and zoning records across every jurisdiction. Join with sales, tax, and demographic data. Screen thousands of properties in seconds.
-
-**Any domain where "where did this number come from?" matters.**
-
----
-
-## Why it's different
-
-Trufax is not competing with Bright Data, LlamaParse, Fivetran, or DataTrails. It sits **above** them.
-
-| Layer | Who solves it | What Trufax does |
+| Method | Path | What it does |
 |---|---|---|
-| Fetching | Bright Data, Zyte, Apify | Pluggable - use theirs |
-| Parsing | LlamaParse, Textract, ABBYY | Pluggable - use theirs |
-| Moving | Fivetran, Airbyte | Not our problem |
-| Attesting | DataTrails, Woleet | We go further - semantic provenance |
-| **Deriving facts with proof** | **Nobody** | **This is what we do** |
+| GET | `/health` | Liveness (no key needed) |
+| GET | `/v1/packs`, `/v1/packs/{name}` | Domain packs and their entities |
+| GET, PUT, DELETE | `/v1/jobs/{name}` | Read, save (YAML body, validated) or delete a job |
+| POST | `/v1/jobs/{name}/runs?limit=&wait=` | Start a run (background by default) |
+| GET | `/v1/runs`, `/v1/runs/{id}` | Run status, counts, checks |
+| GET | `/v1/runs/{id}/report` | The proof report |
+| GET | `/v1/runs/{id}/data?format=json\|csv\|xlsx&rejected=` | The data |
 
-Every competitor stops at bytes. Trufax derives **facts** - with a citation, a derivation chain, a proof, and a bi-temporal record. You can ask *why* a fact is true, *when* it was true, and *what would change if the source changed*. No one else can answer that.
+Send `Authorization: Bearer <key>` or `X-API-Key: <key>`. Jobs saved through the API may
+only read local files inside `TRUFAX_HOME/data`. Interactive docs are at `/docs`.
 
----
-
-## Get started
-
-**Prerequisites:** Docker, Python 3.12+, `make`.
-
-```bash
-git clone https://github.com/trufax/trufax.git
-cd trufax
-cp .env.example .env
-./scripts/bootstrap.sh
-```
-
-Then open [https://localhost:8443/docs](https://localhost:8443/docs) to explore the API.
-
-**Extract your first dataset:**
+### Docker
 
 ```bash
-trufax domains register domains/public-registry.yaml
-trufax runs trigger --domain public-registry
-trufax runs watch --domain public-registry --latest
-trufax export --domain public-registry --format xlsx --output records.xlsx
+TRUFAX_API_KEY=change-me docker compose up -d
+docker compose exec ollama ollama pull qwen3:4b
 ```
 
-You now have a clean, canonical, verifiable spreadsheet. Every row traces to its source.
+This starts the API on port 8000 and a local model server it can use for `llm` fields.
 
 ---
 
-## Who it's for
+## Repository layout
 
-**Data platform teams** who are tired of writing the same extraction code for every new source.
+```
+src/trufax/          the platform engine
+  config.py          job schema        packs.py       domain packs
+  fetch.py           polite fetching   adapters/      html, pdf, xml
+  transforms.py      cleaning, typing  validate.py    rules, de-duplication
+  ai.py              local model extraction with citation check
+  export.py          outputs           report.py      manifest, proof report
+  api.py             HTTP API          cli.py         trufax command
+  domain_packs/      built-in packs    templates/     job templates
+src/qc_property/     the original Québec assessment-roll extractor (unchanged)
+gates/               quality gate framework (QG-1 to QG-4)
+examples/            one working job per source type, plus a Québec roll template
+```
 
-**Regulated enterprises** who need to prove where a number came from - to auditors, regulators, or courts.
-
-**Government agencies** who need to publish open data as canonical, queryable datasets without building a pipeline per department.
-
-**Health, legal, financial, and research institutions** who need reproducible, auditable data pipelines.
-
-**Anyone who has ever asked: "where did this number come from?" and not had a good answer.**
+The Québec extractor package is kept as it was. `examples/quebec/quebec-city-roll.yaml`
+shows the same roll as a real-estate pack job; its record tag and matricule format are
+marked for confirmation against a downloaded roll file.
 
 ---
 
-## The name
+## Roadmap
 
-**Trufax** is internet slang for "true facts" - a piece of factual information; truth. It was born in forums and chat rooms in the early 2000s, a shorthand for "this is verified, this is real, this is the truth."
-
-The internet forgot the word. We're bringing it back - as a platform that turns fragmented data into verified, provable facts, across every domain.
-
----
-
-## Support
-
-- **Documentation:** [docs.trufax.dev](https://docs.trufax.dev)
-- **API reference:** [docs.trufax.dev/api](https://docs.trufax.dev/api)
-- **Discussions:** [github.com/trufax/trufax/discussions](https://github.com/trufax/trufax/discussions)
-- **Issues:** [github.com/trufax/trufax/issues](https://github.com/trufax/trufax/issues)
-- **Commercial:** [hello@trufax.dev](mailto:hello@trufax.dev)
+| Next | Why |
+|---|---|
+| JSON API and spreadsheet sources | Many sources are hidden APIs or client spreadsheets |
+| Docling for scanned and complex PDFs | Layout-aware tables and OCR without manual setup |
+| Scheduled runs and change detection | New, changed and removed records between runs |
+| Canonical store with history | Ask what was true on any date; join entities across sources |
+| Entity resolution | The same property or product matched across sources |
+| `trufax suggest <url>` | A local model drafts the job file from a sample page |
+| Signed manifests and `trufax verify` | Ed25519-signed run records anyone can verify against the source bytes |
+| Multi-tenant API and MCP server | Isolated tenants, per-tenant keys, AI agents querying data directly |
 
 ---
 
 ## License
 
-Apache License 2.0. See [LICENSE](./LICENSE).
-
----
-
-> **Trufax is a platform, not a pipeline.**
-> **From raw data to trusted decisions - in any domain.**
+No LICENSE file has been added yet. Add one before publishing or accepting contributions.

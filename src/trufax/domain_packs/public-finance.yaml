@@ -1,0 +1,20 @@
+pack: public-finance
+version: 1
+description: >
+  Budget and spending line items from government budget documents and
+  financial statements, with amounts reconciled to printed totals.
+
+entities:
+  BudgetLine:
+    description: One line item of revenue or expenditure for one fiscal period.
+    key: [entity_name, fiscal_year, line_item]
+    required: [line_item]
+    fields:
+      entity_name: { type: string, description: "Government or agency" }
+      fiscal_year: string
+      fund: string
+      line_type: { type: string, description: "revenue or expenditure" }
+      line_item: string
+      amount: decimal
+      amount_prior: decimal
+      unit: { type: string, description: "e.g. thousands of USD" }

@@ -1,0 +1,36 @@
+job: books-toscrape
+description: >
+  Live demo against books.toscrape.com, a public sandbox site built for scraping practice.
+  Collects title, price, availability and rating from the catalogue, plus UPC from detail pages.
+
+source:
+  type: html
+  start_urls:
+    - https://books.toscrape.com/catalogue/page-1.html
+  fetch:
+    rate_limit: 2
+  html:
+    item_selector: "article.product_pod"
+    next_page: "li.next a::attr(href)"
+    max_pages: 3
+    detail:
+      link: "h3 a::attr(href)"
+      fields:
+        upc: "xpath://th[text()='UPC']/following-sibling::td/text()"
+        category: "ul.breadcrumb li:nth-child(3) a::text"
+  fields:
+    title: "h3 a::attr(title)"
+    url: { src: "h3 a::attr(href)", type: url }
+    price_gbp: { src: "p.price_color::text", type: decimal, transforms: [strip_currency] }
+    in_stock: { src: "p.availability", type: bool, transforms: ["regex:(In stock)", "replace:In stock|yes"], default: false }
+    rating: { src: "p.star-rating::attr(class)", transforms: ["regex:star-rating (\\w+)"] }
+
+validation:
+  key: [upc]
+  required: [title, price_gbp, upc]
+  rules:
+    - { field: rating, one_of: [One, Two, Three, Four, Five] }
+    - { field: price_gbp, min: 0 }
+
+output:
+  formats: [csv, xlsx]

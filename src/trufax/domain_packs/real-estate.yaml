@@ -1,0 +1,74 @@
+pack: real-estate
+version: 1
+description: >
+  Properties, assessments, sales and listings. Assessment rolls, deeds registries,
+  listing portals and tax records all map onto these entities.
+
+entities:
+  Property:
+    description: One assessed property unit (a parcel, building or condo unit).
+    key: [jurisdiction, parcel_id]
+    required: [parcel_id]
+    fields:
+      jurisdiction: { type: string, description: "Municipality or county code" }
+      parcel_id: { type: string, description: "Assessment roll, matricule or APN number" }
+      civic_number: string
+      street: string
+      unit: string
+      city: string
+      postal_code: string
+      use_code: { type: string, description: "Land-use code, e.g. CUBF in Québec" }
+      use: string
+      land_area_m2: decimal
+      floor_area_m2: decimal
+      year_built: int
+      land_value: decimal
+      building_value: decimal
+      total_value: decimal
+      reference_date: { type: date, description: "Market reference date of the valuation" }
+      currency: string
+    rules:
+      - { field: total_value, min: 0 }
+      - { field: land_value, min: 0 }
+      - { field: building_value, min: 0 }
+      - { field: total_value, sum_of: [land_value, building_value] }
+
+  Sale:
+    description: One recorded transfer of a property.
+    key: [jurisdiction, parcel_id, sale_date]
+    required: [sale_date, price]
+    fields:
+      jurisdiction: string
+      parcel_id: string
+      sale_date: date
+      price: decimal
+      currency: string
+      property_type: { type: string, description: "residential, commercial, land, ..." }
+      buyer: { type: string, personal_data: true }
+      seller: { type: string, personal_data: true }
+      mortgage_amount: decimal
+      mortgage_term_months: int
+      document_ref: string
+    rules:
+      - { field: price, min: 0 }
+
+  Listing:
+    description: A property advertised for sale or rent.
+    key: [url]
+    required: [url, price]
+    fields:
+      url: url
+      title: string
+      listing_type: { type: string, description: "sale or rent" }
+      price: decimal
+      currency: string
+      bedrooms: int
+      bathrooms: decimal
+      floor_area_m2: decimal
+      street: string
+      city: string
+      agency: string
+      listed_date: date
+    rules:
+      - { field: price, min: 0 }
+      - { field: listing_type, one_of: [sale, rent] }

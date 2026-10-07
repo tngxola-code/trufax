@@ -1,0 +1,22 @@
+job: __JOB__
+client: ""
+description: "What this dataset is and who it is for."
+
+source:
+  type: xml
+  start_urls:
+    - https://example.gov/open-data/records.xml
+  xml:
+    record_tag: Record          # local name of one record element; namespaces ignored
+  fields:
+    id: { src: "@id" }
+    name: { src: "Name" }
+    city: { src: "Address/City" }
+    value: { src: "Valuation/Total", type: decimal }
+
+validation:
+  key: [id]
+  required: [id]
+
+output:
+  formats: [csv, xlsx]

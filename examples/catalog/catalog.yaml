@@ -1,0 +1,39 @@
+job: example-catalog
+client: Example Supply Co.
+description: >
+  Product catalogue with price, stock and specifications from every listing page
+  and each product's detail page, in the e-commerce pack's Product shape.
+  Offline demo: the site lives in ./site.
+
+pack: e-commerce
+entity: Product
+
+source:
+  type: html
+  start_urls:
+    - site/page-1.html
+  html:
+    item_selector: "article.product"
+    next_page: "a.next::attr(href)"
+    max_pages: 10
+    detail:
+      link: "h3 a::attr(href)"
+      fields:
+        sku: "td.sku::text"
+        category: "td.category::text"
+        description: ".description p::text"
+  fields:
+    name: "h3 a::attr(title)"
+    url: "h3 a::attr(href)"
+    price: { src: "p.price::text", transforms: [strip_currency] }
+    currency: { value: ZAR }
+    in_stock: { src: "p.stock::text", transforms: ["regex:^(In stock)", "replace:In stock|yes"], default: false }
+    stock_qty: { src: "p.stock::text", transforms: ["regex:\\((\\d+) available"], default: 0 }
+
+validation:
+  required: [sku]
+  rules:
+    - { field: sku, pattern: "[A-Z]{3}-\\d{4}" }
+
+output:
+  formats: [csv, xlsx, json]

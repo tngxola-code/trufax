@@ -26,3 +26,9 @@ htmlcov/
 
 # detect-secrets baseline is generated per environment
 .secrets.baseline
+
+# Trufax engine output and API state
+output/
+trufax-home/
+.cache/
+build/

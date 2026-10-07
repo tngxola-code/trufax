@@ -1,0 +1,26 @@
+# Trufax API plus a local model server. Start with:
+#   TRUFAX_API_KEY=change-me docker compose up -d
+#   docker compose exec ollama ollama pull qwen3:4b
+services:
+  trufax:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      TRUFAX_API_KEY: ${TRUFAX_API_KEY:?set TRUFAX_API_KEY}
+      TRUFAX_OLLAMA_URL: http://ollama:11434
+      TRUFAX_OLLAMA_MODEL: ${TRUFAX_OLLAMA_MODEL:-qwen3:4b}
+    volumes: ["trufax-data:/data"]
+    depends_on: [ollama]
+
+  ollama:
+    image: ollama/ollama
+    volumes: ["ollama-models:/root/.ollama"]
+    # GPU: uncomment on a machine with the NVIDIA container toolkit
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ capabilities: [gpu] }]
+
+volumes:
+  trufax-data: {}
+  ollama-models: {}

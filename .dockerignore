@@ -1,0 +1,9 @@
+.git
+.idea
+.venv
+**/__pycache__
+**/*.egg-info
+examples/*/output
+data
+trufax-home
+tests

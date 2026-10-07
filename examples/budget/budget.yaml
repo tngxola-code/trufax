@@ -1,0 +1,40 @@
+job: example-budget-revenue
+client: Public finance research team
+description: >
+  General Fund revenue line items from a governor's proposed budget PDF, in the
+  public-finance pack's BudgetLine shape. Printed totals are not exported as rows;
+  they are used to prove the line items add up.
+
+pack: public-finance
+entity: BudgetLine
+
+source:
+  type: pdf
+  start_urls:
+    - general-fund-revenue.pdf
+  pdf:
+    mode: table
+    header_row: 0
+    totals:
+      # order matters: the most specific label first
+      - label_field: line_item
+        label_regex: "^Total General Fund"
+        sum_fields: [amount_prior, amount]
+      - label_field: line_item
+        label_regex: "^Total "
+        sum_fields: [amount_prior, amount]
+  fields:
+    line_item: "Revenue Source"
+    amount_prior: "FY2025 Actual"
+    amount: "FY2026 Proposed"
+    entity_name: { value: Province of Example }
+    fiscal_year: { value: FY2026 }
+    fund: { value: General Fund }
+    line_type: { value: revenue }
+    unit: { value: thousands of USD }
+
+validation:
+  required: [amount, amount_prior]
+
+output:
+  formats: [csv, xlsx]
