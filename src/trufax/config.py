@@ -55,6 +55,12 @@ class FetchSettings(Strict):
     retries: int = Field(3, ge=0)
     respect_robots: bool = True
     cache: bool = True
+    cache_ttl: float | None = Field(
+        None,
+        ge=0,
+        description="seconds a cached page may be reused; null = no limit. Tracked jobs "
+        "(change detection on) never reuse cached pages unless this is set explicitly.",
+    )
     user_agent: str = "trufax/0.2 (+data extraction; contact via client)"
     headers: dict[str, str] = Field(default_factory=dict)
     proxy: str | None = None
@@ -139,6 +145,8 @@ class XmlSettings(Strict):
 
 
 class SourceConfig(Strict):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     type: Literal["html", "pdf", "xml", "json", "spreadsheet"]
     start_urls: list[str] = Field(default_factory=list)
     fetch: FetchSettings = Field(default_factory=FetchSettings)
@@ -224,6 +232,36 @@ class AiSettings(Strict):
     max_context_chars: int = 12000
 
 
+class ChangesConfig(Strict):
+    """Compare each full run with the last clean run of the same job (needs a key)."""
+
+    enabled: bool = True
+
+
+AlertEvent = Literal["failure", "review", "changes"]
+
+
+def _all_alert_events() -> list[AlertEvent]:
+    return ["failure", "review", "changes"]
+
+
+class AlertsConfig(Strict):
+    """Push run outcomes to a webhook. The URL is read from an environment variable so
+    it never sits in the job file (jobs run by the API: TRUFAX_SECRET_* names only)."""
+
+    webhook_url_env: str = Field(..., pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    on: list[AlertEvent] = Field(default_factory=_all_alert_events)
+    min_changes: int = Field(1, ge=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _yaml_on(cls, data: Any) -> Any:
+        # YAML 1.1 reads a bare `on:` key as boolean True
+        if isinstance(data, dict) and True in data:
+            data = {("on" if k is True else k): v for k, v in data.items()}
+        return data
+
+
 class JobConfig(Strict):
     job: str = Field(..., pattern=r"^[a-z0-9][a-z0-9_-]*$")
     description: str = ""
@@ -234,13 +272,28 @@ class JobConfig(Strict):
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     ai: AiSettings = Field(default_factory=AiSettings)
+    schedule: str | None = Field(
+        None, description='5-field cron expression in UTC, e.g. "0 6 * * *"'
+    )
+    changes: ChangesConfig = Field(default_factory=ChangesConfig)
+    alerts: AlertsConfig | None = None
     entity_fields: list[str] = Field(default_factory=list, exclude=True)
 
     @model_validator(mode="after")
     def _pack_and_entity(self) -> JobConfig:
         if bool(self.pack) != bool(self.entity):
             raise ValueError("set both 'pack' and 'entity', or neither")
+        if self.schedule:
+            from croniter import croniter
+
+            if not croniter.is_valid(self.schedule):
+                raise ValueError(f"schedule {self.schedule!r} is not a valid cron expression")
         return self
+
+    @property
+    def tracked(self) -> bool:
+        """Change detection runs only when enabled and records have a key."""
+        return self.changes.enabled and bool(self.validation.key)
 
     @property
     def fields(self) -> dict[str, FieldSpec]:

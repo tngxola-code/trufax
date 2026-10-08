@@ -32,8 +32,10 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import ValidationError
 
 from . import __version__
+from .alerts import notify_failure
 from .config import UnsafePath, parse_job
 from .fetch import restrict_env
+from .history import History
 from .packs import PackError, available_packs, get_pack
 from .runner import new_run_id, run_job
 
@@ -183,6 +185,7 @@ def create_app(home: Path | None = None) -> FastAPI:
     def execute(state: RunState, limit: int | None) -> None:
         with store.slots:
             state.status = "running"
+            job = None
             try:
                 job = store.load_job(state.job)
                 result = run_job(
@@ -193,6 +196,8 @@ def create_app(home: Path | None = None) -> FastAPI:
             except Exception as e:  # reported on the run, never crashes the server
                 log.exception("run %s failed", state.run_id)
                 state.status, state.error = "failed", f"{type(e).__name__}: {e}"
+                if job is not None:
+                    notify_failure(job, e)
 
     def describe(state: RunState) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -223,6 +228,31 @@ def create_app(home: Path | None = None) -> FastAPI:
         else:
             threading.Thread(target=execute, args=(state, limit), daemon=True).start()
         return describe(state)
+
+    @app.get("/v1/jobs/{name}/history", dependencies=auth)
+    def job_history(name: str, limit: int = 50) -> list[dict[str, Any]]:
+        store.job_path(name)  # validates the name
+        runs = History.at(store.home / "output").runs(name, min(max(limit, 1), 500))
+        for r in runs:
+            r.pop("out_dir", None)  # server paths stay on the server
+        return runs
+
+    @app.get("/v1/jobs/{name}/changes", dependencies=auth)
+    def job_changes(name: str, run: str | None = None) -> dict[str, Any]:
+        store.job_path(name)
+        hist = History.at(store.home / "output")
+        run_id = run or hist.latest_tracked_run(name)
+        info = hist.run(run_id) if run_id else None
+        if info is None or info["job"] != name:
+            raise HTTPException(404, "no run with change detection for this job")
+        if info["changes"] is None:
+            raise HTTPException(404, "change detection did not run for this run")
+        return {
+            "run_id": run_id,
+            "status": info["status"],
+            "summary": info["changes"],
+            "changes": hist.changes_for(info["run_id"]),
+        }
 
     @app.get("/v1/runs", dependencies=auth)
     def list_runs(job: str | None = None) -> list[dict[str, Any]]:
