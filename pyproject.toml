@@ -18,6 +18,7 @@ dependencies = [
     "PyYAML>=6.0",
     "tenacity>=8.2.0",
     "openpyxl>=3.1.0",
+    "croniter>=2.0",
     # used by the Québec extractor package (qc_property)
     "pandas>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -62,5 +63,5 @@ python_version = "3.12"
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["pdfplumber.*", "parsel.*", "reportlab.*", "gspread.*", "playwright.*", "uvicorn.*", "lxml.*", "openpyxl.*"]
+module = ["pdfplumber.*", "parsel.*", "reportlab.*", "gspread.*", "playwright.*", "uvicorn.*", "lxml.*", "openpyxl.*", "croniter.*"]
 ignore_missing_imports = true

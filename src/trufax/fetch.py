@@ -136,9 +136,17 @@ class _RetryStatus(FetchError):
 class Fetcher:
     """HTTP fetcher with politeness built in. Use as a context manager."""
 
-    def __init__(self, settings: FetchSettings, cache_dir: Path | None = None):
+    def __init__(
+        self,
+        settings: FetchSettings,
+        cache_dir: Path | None = None,
+        max_age: float | None = None,
+    ):
+        """``max_age`` (seconds) caps how old a cached page may be; it defaults to the
+        settings' ``cache_ttl``. ``0`` means always fetch (the page is still cached)."""
         self.s = settings
         self.cache_dir = cache_dir if settings.cache else None
+        self.max_age = settings.cache_ttl if max_age is None else max_age
         if self.cache_dir:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._limiter = _RateLimiter(settings.rate_limit)
@@ -190,14 +198,27 @@ class Fetcher:
             return None
         return self.cache_dir / hashlib.sha256(url.encode()).hexdigest()
 
+    def _read_cache(self, url: str) -> Fetched | None:
+        cached = self._cache_file(url)
+        if not cached or not cached.exists():
+            return None
+        if self.max_age is not None and time.time() - cached.stat().st_mtime >= self.max_age:
+            return None
+        return Fetched(
+            url=url, final_url=url, status=200, content=cached.read_bytes(), from_cache=True
+        )
+
+    def _write_cache(self, url: str, content: bytes) -> None:
+        cached = self._cache_file(url)
+        if cached:
+            cached.write_bytes(content)
+
     def _get_remote(self, url: str) -> Fetched:
         if self.s.respect_robots and not self._allowed(url):
             raise BlockedByRobots(f"robots.txt disallows {url}")
-        cached = self._cache_file(url)
-        if cached and cached.exists():
-            return Fetched(
-                url=url, final_url=url, status=200, content=cached.read_bytes(), from_cache=True
-            )
+        hit = self._read_cache(url)
+        if hit is not None:
+            return hit
 
         client = self._client
         assert client is not None, "use the fetcher as a context manager"
@@ -228,8 +249,7 @@ class Fetcher:
             content=resp.content,
             content_type=resp.headers.get("content-type", ""),
         )
-        if cached:
-            cached.write_bytes(resp.content)
+        self._write_cache(url, resp.content)
         return result
 
     def _allowed(self, url: str) -> bool:
@@ -281,6 +301,9 @@ class BrowserFetcher(Fetcher):
     def _get_remote(self, url: str) -> Fetched:
         if self.s.respect_robots and not self._allowed(url):
             raise BlockedByRobots(f"robots.txt disallows {url}")
+        hit = self._read_cache(url)
+        if hit is not None:
+            return hit
         self._limiter.wait()
         resp = self._page.goto(url, timeout=self.s.timeout * 1000, wait_until="networkidle")
         if self.s.wait_for:
@@ -288,15 +311,19 @@ class BrowserFetcher(Fetcher):
         status = resp.status if resp else 0
         if status >= 400:
             raise FetchError(f"HTTP {status} for {url}")
+        content = self._page.content().encode("utf-8")
+        self._write_cache(url, content)
         return Fetched(
             url=url,
             final_url=self._page.url,
             status=status,
-            content=self._page.content().encode("utf-8"),
+            content=content,
             content_type="text/html",
         )
 
 
-def make_fetcher(settings: FetchSettings, cache_dir: Path | None = None) -> Fetcher:
+def make_fetcher(
+    settings: FetchSettings, cache_dir: Path | None = None, max_age: float | None = None
+) -> Fetcher:
     cls = BrowserFetcher if settings.engine == "browser" else Fetcher
-    return cls(settings, cache_dir)
+    return cls(settings, cache_dir, max_age)

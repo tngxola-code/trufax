@@ -46,8 +46,9 @@ proof report showing what was collected, from where, and which checks it passed.
 | Cleaning | 7 field types, 12 transforms, fixed values, accounting negatives, French number format |
 | Trust | Required, min/max, pattern, one_of, sum_of rules; key-based de-duplication; every extracted record accounted for; provenance and SHA-256 per record |
 | Local AI | `llm` fields via Ollama with JSON-schema output and a citation check |
-| Outputs | CSV, Excel, JSON, rejected.csv with reasons, manifest.json, one-page proof-report.html, optional Google Sheets |
-| Interfaces | CLI (`run`, `sample`, `check`, `new`, `packs`, `export-repo`, `serve`) and HTTP API |
+| Recurring runs | Run history, change detection (new, changed, removed since the last clean run), cron schedules, webhook alerts |
+| Outputs | CSV, Excel, JSON, rejected.csv with reasons, changes.csv, manifest.json, one-page proof-report.html, optional Google Sheets |
+| Interfaces | CLI (`run`, `sample`, `check`, `new`, `packs`, `history`, `changes`, `schedule`, `export-repo`, `serve`) and HTTP API |
 | Delivery | `export-repo` builds a standalone repository a client owns and can run without you |
 | Quality | Quality gates QG-1 to QG-4 (lint, types, tests, 80% coverage), Docker image and compose file |
 
@@ -182,6 +183,43 @@ Model-filled fields are named in the `_ai_fields` column with the model that fil
 
 ---
 
+## Recurring runs and change detection
+
+Any full run of a job with a key (from its pack or `validation.key`) is compared with the
+last clean run of the same job. The run writes `changes.csv`, shows the changes in the
+proof report, and records everything in `trufax-history.db` next to the run folders.
+
+```yaml
+schedule: "0 6 * * *"            # cron, UTC: daily at 06:00
+alerts:
+  webhook_url_env: SHOP_WEBHOOK    # URL read from the environment, never the job file
+  on: [failure, review, changes]
+  min_changes: 1
+```
+
+```bash
+trufax schedule --dir jobs --once   # from system cron, every minute: runs what is due
+trufax schedule --dir jobs          # or keep it running
+trufax history jobs/shop.yaml       # past runs, with +new ~changed -removed
+trufax changes jobs/shop.yaml       # what changed in the latest run
+```
+
+The rules that keep the change feed trustworthy:
+
+- **Clean runs only become the baseline.** A run where a page failed or a check failed is
+  marked REVIEW. It still reports new and changed records, but it never reports removals
+  (a record it could not read is not a removed record) and never becomes the reference
+  for the next run.
+- **Tracked jobs always read the live source.** Cached pages are not reused unless the
+  job sets `fetch.cache_ttl` itself.
+- **Each scheduled time runs once.** The last run time per job is stored, so calling
+  `--once` every minute, restarting, or running two schedulers does not repeat a run.
+- **Records are compared on their fields, not their position,** so a product that moved
+  to page 2 is not a change.
+
+Alerts are JSON posts with the run, its counts, failed checks or the first 50 changes,
+and the proof report path. A failed delivery is logged and never fails the run.
+
 ## Headless API
 
 ```bash
@@ -196,12 +234,14 @@ TRUFAX_API_KEY=change-me trufax serve --home trufax-home
 | GET, PUT, DELETE | `/v1/jobs/{name}` | Read, save (YAML body, validated) or delete a job |
 | POST | `/v1/jobs/{name}/runs?limit=&wait=` | Start a run (background by default) |
 | GET | `/v1/runs`, `/v1/runs/{id}` | Run status, counts, checks |
+| GET | `/v1/jobs/{name}/history` | Past runs with status and change counts |
+| GET | `/v1/jobs/{name}/changes?run=` | Changes in the latest (or given) run, field by field |
 | GET | `/v1/runs/{id}/report` | The proof report |
 | GET | `/v1/runs/{id}/data?format=json\|csv\|xlsx&rejected=` | The data |
 
 Send `Authorization: Bearer <key>` or `X-API-Key: <key>`. Jobs saved through the API may
-only read local files inside `TRUFAX_HOME/data`, and may only use secrets named
-`TRUFAX_SECRET_*`, so a submitted job cannot read the server's other environment variables. Interactive docs are at `/docs`.
+only read local files inside `TRUFAX_HOME/data`, and may only use secrets (including
+alert webhook URLs) named `TRUFAX_SECRET_*`, so a submitted job cannot read the server's other environment variables. Interactive docs are at `/docs`.
 
 ### Docker
 
@@ -223,6 +263,8 @@ src/trufax/          the platform engine
   transforms.py      cleaning, typing  validate.py    rules, de-duplication
   ai.py              local model extraction with citation check
   export.py          outputs           report.py      manifest, proof report
+  history.py         run history       changes.py     change detection
+  schedule.py        cron runs         alerts.py      webhook alerts
   api.py             HTTP API          cli.py         trufax command
   domain_packs/      built-in packs    templates/     job templates
 src/qc_property/     the original Québec assessment-roll extractor (unchanged)
@@ -241,8 +283,9 @@ marked for confirmation against a downloaded roll file.
 | Next | Why |
 |---|---|
 | Docling for scanned and complex PDFs | Layout-aware tables and OCR without manual setup |
-| Scheduled runs and change detection | New, changed and removed records between runs |
-| Canonical store with history | Ask what was true on any date; join entities across sources |
+| Postgres history store | Many tenants and large histories; ask what was true on any date |
+| Anomaly rules in packs | Flag a value far outside its usual range, per domain |
+| Grounded change summaries | A local model writes the summary; every sentence cites a change record |
 | Entity resolution | The same property or product matched across sources |
 | `trufax suggest <url>` | A local model drafts the job file from a sample page |
 | Signed manifests and `trufax verify` | Ed25519-signed run records anyone can verify against the source bytes |

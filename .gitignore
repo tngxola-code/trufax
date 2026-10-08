@@ -32,3 +32,4 @@ output/
 trufax-home/
 .cache/
 build/
+trufax-history.db

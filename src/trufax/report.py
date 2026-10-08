@@ -12,6 +12,7 @@ from html import escape
 from pathlib import Path
 
 from . import __version__
+from .changes import key_label
 from .export import _plain
 from .fetch import Fetched
 from .records import Record
@@ -32,6 +33,7 @@ class Manifest:
     sources: list[dict]
     warnings: list[str]
     outputs: list[str] = field(default_factory=list)
+    changes: dict | None = None
     engine_version: str = __version__
 
     def write(self, path: Path) -> None:
@@ -121,6 +123,39 @@ def _table(rows: list[dict], columns: list[str]) -> str:
     return f'<div class="card"><table><tr>{head}</tr>{"".join(body)}</table></div>'
 
 
+def _changes_html(m: Manifest, rows: list[dict]) -> str:
+    c = m.changes
+    if not c or c.get("since_run") is None:
+        return ""
+    removed = c["removed"] if c["removed"] is not None else "not checked"
+    head = (
+        f'<p class="meta">Compared with run {escape(str(c["since_run"]))}: '
+        f"{c['new']} new, {c['changed']} changed, {removed} removed, "
+        f"{c['unchanged']} unchanged. Full list: changes.csv.</p>"
+    )
+    if not rows:
+        return f"<h2>Changes since last run</h2>{head}"
+    table_rows = []
+    for r in rows[:15]:
+        if r["kind"] == "changed":
+            what = "; ".join(
+                f"{escape(f)}: {escape(str(r['before'].get(f)))} &rarr; "
+                f"{escape(str(r['after'].get(f)))}"
+                for f in r["fields"]
+            )
+        else:
+            what = ""
+        table_rows.append(
+            f"<tr><td>{escape(r['kind'])}</td><td>{escape(key_label(r['key']))}</td>"
+            f"<td>{what if r['kind'] == 'changed' else ''}</td></tr>"
+        )
+    return (
+        f"<h2>Changes since last run</h2>{head}<div class='card'><table>"
+        f"<tr><th>change</th><th>record</th><th>what changed</th></tr>{''.join(table_rows)}"
+        f"</table></div>"
+    )
+
+
 def render_report(
     m: Manifest,
     fields: list[str],
@@ -128,6 +163,7 @@ def render_report(
     valid: list[Record],
     rejected: list[Record],
     description: str = "",
+    change_rows: list[dict] | None = None,
 ) -> str:
     passed = m.status == "PASSED"
     checks: list[Check] = [Check(**c) for c in m.checks]
@@ -184,6 +220,7 @@ def render_report(
         "".join(f"<div class='tile'><b>{t}</b><span>{s}</span></div>" for t, s in tiles)
     }</div>
 <h2>Checks</h2><div class="card">{check_html}</div>
+{_changes_html(m, change_rows or [])}
 <h2>Field completeness</h2><p class="meta">Share of delivered records with a value.</p>
 <div class="card"><table>{comp_rows}</table></div>
 <h2>Sample of delivered records</h2>

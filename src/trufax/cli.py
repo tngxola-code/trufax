@@ -1,4 +1,5 @@
-"""Command line: trufax run | sample | check | new | packs | export-repo | serve."""
+"""Command line: trufax run | sample | check | new | packs | history | changes | schedule |
+export-repo | serve."""
 
 from __future__ import annotations
 
@@ -10,9 +11,12 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from . import __version__
+from .alerts import notify_failure
+from .changes import key_label
 from .config import load_job
 from .fetch import FetchError
-from .runner import run_job
+from .history import History
+from .runner import output_root, run_job
 from .scaffold import export_client_repo, new_job
 
 
@@ -37,11 +41,23 @@ def _summary(result) -> int:
     )
     for chk in m.checks:
         print(f"  [{'PASS' if chk['passed'] else 'FAIL'}] {chk['name']}")
+    if m.changes is not None:
+        print(f"  changes: {_change_line(m.changes)}")
     for w in m.warnings[:5]:
         print(f"  warning: {w}")
     print(f"  output: {result.out_dir}")
     print(f"  proof report: {result.report}")
     return 0 if m.status == "PASSED" else 1
+
+
+def _change_line(c: dict) -> str:
+    if c.get("since_run") is None:
+        return f"baseline recorded ({c['unchanged']} records)"
+    removed = c["removed"] if c["removed"] is not None else "not checked (partial run)"
+    return (
+        f"{c['new']} new, {c['changed']} changed, {removed} removed, "
+        f"{c['unchanged']} unchanged since {c['since_run']}"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -75,6 +91,21 @@ def main(argv: list[str] | None = None) -> int:
     sv.add_argument("--port", type=int, default=8000)
     sv.add_argument("--home", help="state folder (default: $TRUFAX_HOME or ./trufax-home)")
 
+    h = sub.add_parser("history", help="list a job's past runs")
+    h.add_argument("job")
+    h.add_argument("--out", help="output root (default: the job's output.dir)")
+    h.add_argument("--limit", type=int, default=20)
+
+    ch = sub.add_parser("changes", help="show what changed in a job's latest (or given) run")
+    ch.add_argument("job")
+    ch.add_argument("--run", help="run id (default: the latest run with change detection)")
+    ch.add_argument("--out", help="output root (default: the job's output.dir)")
+
+    sc = sub.add_parser("schedule", help="run jobs whose schedule: is due")
+    sc.add_argument("--dir", default="jobs", help="folder of job files")
+    sc.add_argument("--once", action="store_true", help="run what is due, then exit (for cron)")
+    sc.add_argument("--interval", type=int, default=30, help="seconds between checks")
+
     e = sub.add_parser("export-repo", help="create a standalone repository for the client")
     e.add_argument("job")
     e.add_argument("--out", required=True)
@@ -95,9 +126,51 @@ def main(argv: list[str] | None = None) -> int:
                 job, base_dir=Path.cwd(), limit=limit, out_root=Path(a.out) if a.out else None
             )
         except FetchError as e:  # e.g. a ${env:NAME} secret that is not set
+            notify_failure(job, e)
             print(f"{a.job}: {e}", file=sys.stderr)
             return 2
         return _summary(result)
+    if a.cmd == "history":
+        job = _load(a.job)
+        hist = History.at(output_root(job, Path.cwd(), Path(a.out) if a.out else None))
+        runs = hist.runs(job.job, a.limit)
+        if not runs:
+            print(f"{job.job}: no runs yet")
+        for run in runs:
+            ch = run["changes"]
+            what = ""
+            if ch and ch.get("since_run"):
+                removed = ch["removed"] if ch["removed"] is not None else "?"
+                what = f"  +{ch['new']} ~{ch['changed']} -{removed}"
+            base = "  baseline" if run["clean"] else ""
+            print(
+                f"{run['run_id']}  {run['mode']:<6} {run['status']:<7} "
+                f"valid {run['counts']['valid']}{what}{base}"
+            )
+        return 0
+    if a.cmd == "changes":
+        job = _load(a.job)
+        hist = History.at(output_root(job, Path.cwd(), Path(a.out) if a.out else None))
+        run_id = a.run or hist.latest_tracked_run(job.job)
+        info = hist.run(run_id) if run_id else None
+        if info is None or info["changes"] is None:
+            print(f"{job.job}: no run with change detection yet")
+            return 1
+        print(f"{run_id}: " + _change_line(info["changes"]))
+        assert run_id is not None
+        for item in hist.changes_for(run_id):
+            detail = ""
+            if item["kind"] == "changed":
+                detail = "  " + "; ".join(
+                    f"{f}: {item['before'].get(f)} -> {item['after'].get(f)}"
+                    for f in item["fields"]
+                )
+            print(f"  {item['kind']:<8} {key_label(item['key'])}{detail}")
+        return 0
+    if a.cmd == "schedule":
+        from .schedule import serve as schedule_serve
+
+        return schedule_serve(Path(a.dir), Path.cwd(), once=a.once, interval=a.interval)
     if a.cmd == "check":
         job = _load(a.job)
         print(
