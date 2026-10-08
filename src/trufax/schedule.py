@@ -61,12 +61,10 @@ def run_due(entries: list[Scheduled], base_dir: Path, now: datetime | None = Non
         assert job.schedule
         history = History.at(output_root(job, base_dir))
         fire = last_fire_time(job.schedule, now)
-        last = history.last_fire(job.job)
-        if last is not None and fire <= last:
+        # Claim the slot before running, atomically: a crash or a slow run is never
+        # retried every minute, and two overlapping schedulers never both run it.
+        if not history.claim_slot(job.job, fire):
             continue
-        # Record the slot before running, so a crash or a slow run is never retried
-        # every minute; the next attempt is the next scheduled time.
-        history.set_last_fire(job.job, fire)
         ran.append(job.job)
         try:
             result = run_job(job, base_dir=base_dir)

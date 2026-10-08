@@ -6,7 +6,7 @@ import functools
 import http.server
 import json
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import ClassVar
 
 import pytest
@@ -285,3 +285,40 @@ def test_api_history_and_changes(site, tmp_path, monkeypatch):
     hist = client.get("/v1/jobs/shop/history").json()
     assert len(hist) == 2 and "out_dir" not in hist[0]
     assert client.get("/v1/jobs/shop/changes?run=nope").status_code == 404
+
+
+def test_overlapping_schedulers_run_a_slot_once(tmp_path):
+    import trufax.schedule as sch
+
+    page = tmp_path / "site.html"
+    page.write_text('<article class="p"><h3>A</h3><span class="sku">A1</span></article>')
+    job = {
+        "job": "shop",
+        "schedule": "0 6 * * *",
+        "source": {
+            "type": "html",
+            "start_urls": [str(page)],
+            "html": {"item_selector": "article.p"},
+            "fields": {"name": "h3::text", "sku": "span.sku::text"},
+        },
+        "validation": {"key": ["sku"]},
+        "output": {"dir": str(tmp_path / "out"), "formats": ["csv"]},
+    }
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    (jobs / "shop.yaml").write_text(yaml.safe_dump(job))
+    started = threading.Barrier(4)
+    ran: list[str] = []
+    now = datetime(2026, 10, 9, 6, 0, 30, tzinfo=UTC)
+
+    def tick():
+        entries, _ = sch.load_scheduled(jobs)
+        started.wait()  # all four schedulers decide at the same instant
+        ran.extend(sch.run_due(entries, tmp_path, now=now))
+
+    threads = [threading.Thread(target=tick) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert ran == ["shop"]

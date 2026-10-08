@@ -210,6 +210,24 @@ class History:
         with self._db() as db:
             db.execute("INSERT OR REPLACE INTO schedule_state VALUES (?, ?)", (job, when))
 
+    def claim_slot(self, job: str, fire: float) -> bool:
+        """Atomically take a scheduled time for a job. True only for the one caller that
+        moves last_fire forward; overlapping schedulers get False and skip the run."""
+        conn = sqlite3.connect(self.path, timeout=30, isolation_level=None)
+        try:
+            conn.execute("BEGIN IMMEDIATE")  # one writer at a time across processes
+            row = conn.execute(
+                "SELECT last_fire FROM schedule_state WHERE job = ?", (job,)
+            ).fetchone()
+            if row is not None and fire <= row[0]:
+                conn.execute("ROLLBACK")
+                return False
+            conn.execute("INSERT OR REPLACE INTO schedule_state VALUES (?, ?)", (job, fire))
+            conn.execute("COMMIT")
+            return True
+        finally:
+            conn.close()
+
 
 def _run_dict(row: sqlite3.Row) -> dict[str, Any]:
     d = dict(row)
